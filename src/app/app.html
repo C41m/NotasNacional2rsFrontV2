@@ -1,0 +1,70 @@
+<!-- Toast global + diálogo de confirmação (uma instância para o app inteiro) -->
+<p-toast position="top-right" />
+<p-confirm-dialog [style]="{ width: '26rem' }" />
+
+<div class="shell">
+  <!-- Sidebar fixa (desktop) -->
+  <aside class="shell-sidebar">
+    <app-sidebar />
+  </aside>
+
+  <div class="shell-main">
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-brand">
+        <p-button
+          icon="pi pi-bars"
+          [text]="true"
+          [rounded]="true"
+          severity="secondary"
+          styleClass="menu-toggle"
+          ariaLabel="Abrir menu"
+          (onClick)="ui.toggleSidebar()"
+        />
+        <div class="topbar-breadcrumb">
+          <span class="text-muted">2RS Notas</span>
+          @if (breadcrumbVisible()) {
+            <i class="pi pi-angle-right text-muted" style="font-size: 0.7rem"></i>
+            <span class="text-primary">{{ pageTitle() }}</span>
+          }
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <p-button
+          [icon]="ui.darkMode() ? 'pi pi-moon' : 'pi pi-sun'"
+          [text]="true"
+          [rounded]="true"
+          severity="secondary"
+          [pTooltip]="ui.darkMode() ? 'Tema claro' : 'Tema escuro'"
+          tooltipPosition="bottom"
+          ariaLabel="Alternar tema"
+          (onClick)="toggleTheme()"
+        />
+        <div class="topbar-logo" style="cursor: default">2R</div>
+      </div>
+    </header>
+
+    <main class="shell-content">
+      <div class="shell-page">
+        <router-outlet />
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Sidebar mobile (overlay) -->
+<p-drawer
+  position="left"
+  [visible]="ui.sidebarVisible()"
+  (visibleChange)="!$event && ui.closeSidebar()"
+  [showCloseIcon]="false"
+  [dismissible]="true"
+  [modal]="true"
+  styleClass="app-drawer"
+  [style]="{ width: 'var(--shell-sidebar-width)' }"
+>
+  <ng-template #content>
+    <app-sidebar (navigate)="ui.closeSidebar()" />
+  </ng-template>
+</p-drawer>

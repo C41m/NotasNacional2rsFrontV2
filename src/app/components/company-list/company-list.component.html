@@ -1,0 +1,206 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Empresas</h1>
+    <p class="page-subtitle">Gerencie cadastros e initiate downloads de NFSe</p>
+  </div>
+  <p-button
+    label="Nova Empresa"
+    icon="pi pi-plus"
+    (onClick)="createCompany()"
+  />
+</div>
+
+<!-- Estatísticas -->
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="stat-card-icon tone-primary"><i class="pi pi-building"></i></div>
+    <div class="stat-card-body">
+      <span class="stat-card-label">Total de Empresas</span>
+      <span class="stat-card-value">{{ totalCompanies() }}</span>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-card-icon tone-success"><i class="pi pi-verified"></i></div>
+    <div class="stat-card-body">
+      <span class="stat-card-label">Com Certificado</span>
+      <span class="stat-card-value text-success">{{ certCount() }}</span>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-card-icon tone-danger"><i class="pi pi-exclamation-triangle"></i></div>
+    <div class="stat-card-body">
+      <span class="stat-card-label">Sem Certificado</span>
+      <span class="stat-card-value text-danger">{{ noCertCount() }}</span>
+    </div>
+  </div>
+</div>
+
+<!-- Tabela -->
+<div class="section">
+  <div class="section-title">
+    <span>Cadastro</span>
+    <span class="text-muted" style="text-transform: none; letter-spacing: 0">
+      {{ companies().length }} registro(s)
+    </span>
+  </div>
+
+  <div class="row-between" style="margin-bottom: 1.25rem">
+    <p-iconfield style="width: min(24rem, 100%)">
+      <p-inputicon styleClass="pi pi-search" />
+      <input
+        pInputText
+        type="text"
+        placeholder="Buscar por nome ou CNPJ..."
+        [ngModel]="search()"
+        (ngModelChange)="onSearchInput($event)"
+        style="width: 100%"
+      />
+    </p-iconfield>
+
+    <div class="inline-gap">
+      @if (selectedCount() > 0) {
+        <span class="text-primary" style="font-size: 0.8rem">
+          {{ selectedCount() }} selecionada(s)
+        </span>
+        <p-button
+          label="Limpar"
+          icon="pi pi-times"
+          severity="secondary"
+          [text]="true"
+          size="small"
+          (onClick)="clearSelection()"
+        />
+      }
+      <p-button
+        [label]="allSelectableSelected() ? 'Desmarcar' : 'Selecionar todas'"
+        severity="secondary"
+        [outlined]="true"
+        size="small"
+        [disabled]="selectableTotal() === 0"
+        (onClick)="toggleSelectAll(!allSelectableSelected())"
+      />
+      <p-button
+        label="Baixar NFSe"
+        icon="pi pi-download"
+        size="small"
+        [disabled]="selectedCount() === 0"
+        (onClick)="startDownload()"
+      />
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <p-table
+      [value]="companies()"
+      dataKey="id"
+      [loading]="loading()"
+      [rowHover]="true"
+      [tableStyle]="{ 'min-width': '52rem' }"
+    >
+      <ng-template #header>
+        <tr>
+          <th style="width: 3rem"></th>
+          <th style="width: 7rem; text-align: center">ID Domínio</th>
+          <th>Empresa</th>
+          <th style="width: 12rem; text-align: center">CNPJ</th>
+          <th style="width: 11rem; text-align: center">Certificado</th>
+          <th style="width: 7rem; text-align: right">Ações</th>
+        </tr>
+      </ng-template>
+
+      <ng-template #body let-company>
+        <tr>
+          <td>
+            <p-checkbox
+              [binary]="true"
+              [ngModel]="isSelected(company.id)"
+              (ngModelChange)="toggleSelection(company, $event)"
+              [disabled]="!isCertValid(company)"
+              [pTooltip]="
+                isCertValid(company) ? 'Selecionar para download' : 'Certificado vencido ou ausente'
+              "
+              tooltipPosition="top"
+            />
+          </td>
+
+          <td style="text-align: center">
+            @if (company.id_dominio) {
+              <span class="table-code">{{ company.id_dominio }}</span>
+            } @else {
+              <span class="text-muted">—</span>
+            }
+          </td>
+
+          <td>
+            <span class="table-name">{{ company.nome }}</span>
+          </td>
+
+          <td style="text-align: center">
+            <span class="table-code">{{ formatCnpj(company.cnpj) }}</span>
+          </td>
+
+          <td style="text-align: center">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 0.25rem">
+              <p-tag
+                [value]="certLabel(company)"
+                [severity]="certSeverity(company)"
+                [rounded]="true"
+              />
+              @if (company.validade_cert) {
+                <span class="stat-card-hint mono">{{ formatDate(company.validade_cert) }}</span>
+              }
+            </div>
+          </td>
+
+          <td>
+            <div class="table-actions">
+              <p-button
+                icon="pi pi-pencil"
+                [text]="true"
+                [rounded]="true"
+                size="small"
+                severity="secondary"
+                pTooltip="Editar"
+                tooltipPosition="top"
+                (onClick)="editCompany(company.id)"
+              />
+              <p-button
+                icon="pi pi-trash"
+                [text]="true"
+                [rounded]="true"
+                size="small"
+                severity="danger"
+                pTooltip="Excluir"
+                tooltipPosition="top"
+                (onClick)="confirmDelete(company)"
+              />
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template #emptymessage>
+        <tr>
+          <td colspan="6">
+            @if (!loading()) {
+              <div class="empty-state">
+                <i class="pi pi-building"></i>
+                <h3>Nenhuma empresa cadastrada</h3>
+                <p>Cadastre sua primeira empresa para começar a gerenciar suas NFSe.</p>
+                <p-button label="Cadastrar Empresa" icon="pi pi-plus" (onClick)="createCompany()" />
+              </div>
+            } @else {
+              <div style="display: flex; flex-direction: column; gap: 0.75rem; padding: 0.5rem">
+                @for (row of [1, 2, 3, 4, 5]; track row) {
+                  <p-skeleton width="100%" height="2.25rem" />
+                }
+              </div>
+            }
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</div>

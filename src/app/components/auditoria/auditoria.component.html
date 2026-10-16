@@ -1,0 +1,493 @@
+<!-- ══════════════════════════════════════════════════════════════
+     Auditoria — trilha de conformidade + razão de empresas + laudo
+     ══════════════════════════════════════════════════════════════ -->
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Auditoria</h1>
+    <p class="page-subtitle">Conformidade por competência e análise por empresa</p>
+  </div>
+
+  <!-- Competência: input mascarado + navegação, não datepicker.
+       O backend só aceita YYYY-MM e o usuário pensa em "set/2026". -->
+  <div class="competencia no-print">
+    <div class="competencia-nav">
+      <p-button
+        icon="pi pi-chevron-left"
+        [text]="true"
+        [rounded]="true"
+        size="small"
+        severity="secondary"
+        pTooltip="Competência anterior"
+        tooltipPosition="top"
+        [disabled]="loading()"
+        (onClick)="navegar(-1)"
+      />
+    </div>
+
+    <input
+      pInputText
+      class="mono"
+      [ngModel]="periodoInput()"
+      (ngModelChange)="onPeriodoInput($event)"
+      (keydown.enter)="aplicarPeriodo()"
+      placeholder="MM/AAAA"
+      maxlength="7"
+      aria-label="Competência (MM/AAAA)"
+    />
+
+    <div class="competencia-nav">
+      <p-button
+        icon="pi pi-chevron-right"
+        [text]="true"
+        [rounded]="true"
+        size="small"
+        severity="secondary"
+        pTooltip="Próxima competência"
+        tooltipPosition="top"
+        [disabled]="loading()"
+        (onClick)="navegar(1)"
+      />
+    </div>
+  </div>
+</div>
+
+@if (error() && !loading()) {
+  <div class="callout callout-danger" style="align-items: center">
+    <i class="pi pi-exclamation-circle"></i>
+    <div>
+      <strong>Erro ao carregar a auditoria</strong>
+      <span>{{ error() }}</span>
+    </div>
+    <p-button label="Tentar novamente" icon="pi pi-refresh" size="small" [outlined]="true" class="push-right no-print" (onClick)="load()" />
+  </div>
+}
+
+@if (loading()) {
+  <div class="trilha" style="margin-bottom: 1.5rem">
+    <div class="stack-sm">
+      <p-skeleton width="30%" height="2rem" />
+      <p-skeleton width="100%" height="0.5rem" />
+      <p-skeleton width="60%" height="1rem" />
+    </div>
+  </div>
+  <div class="stack-sm">
+    <p-skeleton width="100%" height="4rem" />
+    <p-skeleton width="100%" height="4rem" />
+    <p-skeleton width="100%" height="4rem" />
+    <p-skeleton width="100%" height="4rem" />
+  </div>
+} @else {
+  <!-- ═══ 1. Trilha de conformidade ═══════════════════════════════
+       A régua segmentada substitui os 4 stat-cards: mostra a proporção
+       de cada faixa de uma vez, e a média do período é a leitura primária. -->
+  <div class="trilha" style="margin-bottom: 1.5rem">
+    @if (kpis().total_empresas === 0) {
+      <div class="trilha-head" style="margin-bottom: 0">
+        <div>
+          <h2 class="section-title" style="margin: 0 0 0.25rem">
+            Nenhuma auditoria em {{ periodoInput() }}
+          </h2>
+          <p class="section-subtitle" style="margin: 0">
+            Os resultados só aparecem depois que a competência for processada.
+          </p>
+        </div>
+      </div>
+      <div class="trilha-vazia" style="border-top: 1px solid var(--ledger-rule-soft); padding-top: 1rem">
+        <i class="pi pi-inbox"></i>
+        <span>Use as setas para percorrer as competências com auditoria lançada.</span>
+      </div>
+    } @else {
+      <div class="trilha-head">
+        <div class="trilha-figure">
+          <b>{{ formatPercentValue(conformidadeMedia()) }}</b>
+          <span>% de conformidade média em {{ periodoInput() }}</span>
+        </div>
+        <p class="trilha-legenda">
+          Média das {{ kpis().total_empresas }} empresas auditadas na competência.
+        </p>
+      </div>
+
+      <div
+        class="trilha-bar"
+        role="img"
+        [attr.aria-label]="
+          kpis().conformes + ' conformes, ' + kpiAtencao() + ' em atenção, ' +
+          kpis().criticas + ' críticas'
+        "
+      >
+        <div class="trilha-seg trilha-seg-conforme" [style.width.%]="trilha().conforme"></div>
+        <div class="trilha-seg trilha-seg-atencao" [style.width.%]="trilha().atencao"></div>
+        <div class="trilha-seg trilha-seg-critico" [style.width.%]="trilha().critico"></div>
+      </div>
+
+      <div class="trilha-counts">
+        <span class="trilha-count">
+          <i class="trilha-key trilha-key-conforme"></i>
+          <b>{{ kpis().conformes }}</b> conformes
+        </span>
+        <span class="trilha-count">
+          <i class="trilha-key trilha-key-atencao"></i>
+          <b>{{ kpiAtencao() }}</b> em atenção
+        </span>
+        <span class="trilha-count">
+          <i class="trilha-key trilha-key-critico"></i>
+          <b>{{ kpis().criticas }}</b> críticas
+        </span>
+        <span class="trilha-count trilha-count-fim">
+          <i class="pi pi-file-minus" style="font-size: 0.75rem"></i>
+          <b>{{ kpis().total_documentos_faltantes }}</b> documentos faltantes
+        </span>
+      </div>
+    }
+  </div>
+
+  <!-- ═══ 2. Razão de empresas ══════════════════════════════════ -->
+  @if (empresas().length > 0) {
+    <div class="no-print" style="margin-bottom: 1rem; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap">
+      <span class="iconfield">
+        <i class="pi pi-search"></i>
+        <input
+          pInputText
+          type="text"
+          [ngModel]="search()"
+          (ngModelChange)="search.set($event)"
+          placeholder="Buscar por razão social ou CNPJ"
+          aria-label="Buscar empresa"
+        />
+      </span>
+
+      <p-select
+        [options]="[
+          { label: 'Mais pendências', value: 'pendencias' },
+          { label: 'Menor conformidade', value: 'conformidade' },
+          { label: 'Razão social (A–Z)', value: 'nome' }
+        ]"
+        [ngModel]="sortKey()"
+        (ngModelChange)="sortKey.set($event)"
+        optionLabel="label"
+        optionValue="value"
+        styleClass="ordenar-select"
+        ariaLabel="Ordenar empresas"
+      />
+
+      @if (search()) {
+        <span class="chip-ativos">
+          <b>{{ empresasVisiveis().length }}</b> de {{ empresas().length }}
+        </span>
+      }
+    </div>
+
+    @if (empresasVisiveis().length === 0) {
+      <div class="section">
+        <div class="empty-state">
+          <i class="pi pi-search"></i>
+          <h3>Nenhuma empresa encontrada</h3>
+          <p>A busca "{{ search() }}" não corresponde a nenhuma razão social ou CNPJ na competência.</p>
+          <p-button
+            label="Limpar busca"
+            icon="pi pi-times"
+            severity="secondary"
+            [outlined]="true"
+            (onClick)="search.set('')"
+          />
+        </div>
+      </div>
+    } @else {
+      <div class="razao" role="list">
+        @for (emp of empresasVisiveis(); track emp.id) {
+          <button type="button" class="razao-item" role="listitem" (click)="selecionarEmpresa(emp)">
+            <i class="razao-marca" [class]="'razao-marca ' + faixa(emp.status_geral)"></i>
+
+            <div class="razao-corpo">
+              <div class="razao-nome">{{ emp.razao_social }}</div>
+              <div class="razao-meta">
+                <span>{{ formatCnpj(emp.cnpj) }}</span>
+                @if (emp.classificacao_anexo) {
+                  <span class="sep">|</span>
+                  <span>{{ emp.classificacao_anexo }}</span>
+                }
+                @if (emp.pendencias_criticas_count > 0) {
+                  <span class="sep">|</span>
+                  <span style="color: var(--ink-autoinfracao)">
+                    {{ emp.pendencias_criticas_count }} pendência(s) grave(is)
+                  </span>
+                }
+              </div>
+            </div>
+
+            <div class="razao-dir">
+              <span class="razao-pct" [class]="'razao-pct ' + faixa(emp.status_geral)">
+                {{ formatPercentValue(emp.conformidade_pct) }}%
+              </span>
+              <p-tag
+                [value]="statusLabels[emp.status_geral]"
+                [pt]="{ root: 'status-tag ' + statusSeverity(emp.status_geral) }"
+              />
+              <i class="pi pi-chevron-right" style="font-size: 0.75rem; color: var(--p-surface-600)"></i>
+            </div>
+          </button>
+        }
+      </div>
+    }
+  }
+}
+
+<!-- ═══ 3. Laudo da empresa ═══════════════════════════════════════
+     Substitui a dialog antiga: a análise é longa (razão social + 12
+     fatos + pendências + laudo) e uma dialog estreita obrigaria a
+     rolar dentro de uma caixa. Aqui ocupa a página inteira. -->
+@if (selected() || detailLoading()) {
+  <div style="margin-top: 2rem">
+    <div class="divider"></div>
+
+    @if (detailLoading()) {
+      <div class="detalhe">
+        <p-skeleton shape="circle" size="10rem" />
+        <div class="stack-sm">
+          <p-skeleton width="45%" height="1.5rem" />
+          <p-skeleton width="100%" height="5rem" />
+          <p-skeleton width="100%" height="1rem" />
+        </div>
+      </div>
+    } @else if (selected(); as a) {
+      <!-- Arco: o número que o contador quer ver primeiro -->
+      <div class="detalhe">
+        <div class="arco">
+          <svg [attr.width]="arco().r * 2 + 18" [attr.height]="arco().r * 2 + 18" viewBox="0 0 142 142">
+            <circle
+              class="arco-track"
+              [attr.cx]="arco().r + 9"
+              [attr.cy]="arco().r + 9"
+              [attr.r]="arco().r"
+              [attr.stroke-dasharray]="arco().trackDash"
+            />
+            <circle
+              class="arco-fill"
+              [class]="'arco-fill ' + faixa(a.status_geral)"
+              [attr.cx]="arco().r + 9"
+              [attr.cy]="arco().r + 9"
+              [attr.r]="arco().r"
+              [attr.stroke-dasharray]="arco().trackDash"
+              [attr.stroke-dashoffset]="arco().offset"
+            />
+          </svg>
+          <div class="arco-centro">
+            <span class="arco-valor">{{ formatPercentValue(a.conformidade_pct) }}<small>%</small></span>
+            <span class="arco-rotulo">conformidade</span>
+          </div>
+        </div>
+
+        <div style="min-width: 0">
+          <div class="row-between" style="margin-bottom: 0.25rem; align-items: flex-start">
+            <div style="min-width: 0">
+              <h2 class="section-title" style="margin: 0">{{ a.razao_social }}</h2>
+              <p class="section-subtitle mono" style="margin: 0.125rem 0 0">
+                {{ formatCnpj(a.cnpj) }} — competência {{ formatMesAno(a.periodo) }}
+              </p>
+            </div>
+            <div class="no-print" style="display: flex; gap: 0.5rem; align-items: center">
+              <p-tag [value]="statusLabels[a.status_geral]" [pt]="{ root: 'status-tag ' + statusSeverity(a.status_geral) }" />
+              <p-button
+                icon="pi pi-print"
+                [text]="true"
+                [rounded]="true"
+                size="small"
+                severity="secondary"
+                pTooltip="Imprimir laudo"
+                tooltipPosition="top"
+                (onClick)="printRelatorio()"
+              />
+              <p-button
+                icon="pi pi-times"
+                [text]="true"
+                [rounded]="true"
+                size="small"
+                severity="secondary"
+                pTooltip="Fechar"
+                tooltipPosition="top"
+                (onClick)="fecharDetalhe()"
+              />
+            </div>
+          </div>
+
+          <!-- Grade de fatos: rótulo em cima, valor embaixo, régua entre
+               células. Sem card individual — é uma tabela, não um mosaico. -->
+          <dl class="detalhe-facts" style="margin-top: 1rem">
+            <div class="fact">
+              <dt>Documentos</dt>
+              <dd [class.vazio]="a.documentos_encontrados === 0">
+                {{ a.documentos_encontrados }} / {{ a.documentos_esperados }}
+              </dd>
+            </div>
+            <div class="fact">
+              <dt>Fator R</dt>
+              <dd [class.vazio]="a.fator_r === null">{{ fatorR(a.fator_r) }}</dd>
+            </div>
+            <div class="fact">
+              <dt>Alíquota efetiva</dt>
+              <dd [class.vazio]="a.aliquota_efetiva === null">{{ aliquota(a.aliquota_efetiva) }}</dd>
+            </div>
+            <div class="fact">
+              <dt>Anexo</dt>
+              <dd [class.vazio]="!a.classificacao_anexo">{{ a.classificacao_anexo || '—' }}</dd>
+            </div>
+            <div class="fact">
+              <dt>Receita PA</dt>
+              <dd [class.vazio]="a.receita_pa === null">{{ formatCurrency(a.receita_pa) }}</dd>
+            </div>
+            <div class="fact">
+              <dt>RBT12</dt>
+              <dd [class.vazio]="a.rbt12 === null">{{ formatCurrency(a.rbt12) }}</dd>
+            </div>
+            <div class="fact">
+              <dt>Folha 12m</dt>
+              <dd [class.vazio]="a.folha_12m === null">{{ formatCurrency(a.folha_12m) }}</dd>
+            </div>
+            <div class="fact">
+              <dt>Funcionários</dt>
+              <dd [class.vazio]="!a.num_funcionarios">{{ a.num_funcionarios ?? '—' }}</dd>
+            </div>
+            @if (a.pro_labore !== null && a.pro_labore !== undefined) {
+              <div class="fact">
+                <dt>Pró-labore</dt>
+                <dd [class.vazio]="a.pro_labore === null">{{ formatCurrency(a.pro_labore) }}</dd>
+              </div>
+            }
+            @if (a.inss !== null || a.irrf !== null || a.fgts !== null) {
+              <div class="fact">
+                <dt>INSS / IRRF / FGTS</dt>
+                <dd [class.vazio]="a.inss === null && a.irrf === null && a.fgts === null">
+                  {{ a.inss ?? '—' }} / {{ a.irrf ?? '—' }} / {{ a.fgts ?? '—' }}
+                </dd>
+              </div>
+            }
+          </dl>
+
+          <!-- Laudo -->
+          @if (a.analise_completa || a.observacao_geral) {
+            <div style="margin-top: 1.5rem">
+              <h3 class="section-title" style="margin: 0 0 0.625rem">Análise</h3>
+              <div class="laudo">{{ a.analise_completa || a.observacao_geral }}</div>
+            </div>
+          }
+
+          <!-- Pendências -->
+          <div style="margin-top: 1.5rem">
+            <div class="row-between" style="margin-bottom: 0.5rem; align-items: center">
+              <h3 class="section-title" style="margin: 0">
+                Pendências
+                @if (a.pendencias.length > 0) {
+                  <span style="color: var(--p-surface-500)">({{ a.pendencias.length }})</span>
+                }
+              </h3>
+            </div>
+
+            @if (a.pendencias.length === 0) {
+              <div class="trilha-vazia" style="padding: 0.75rem 0">
+                <i class="pi pi-check-circle" style="color: var(--ink-fiscal)"></i>
+                <span>Nenhuma pendência registrada para esta competência.</span>
+              </div>
+            } @else {
+              <!-- Filtros por gravidade e status: dois selectButton
+                   compactos em vez de p-checkbox repetido 5x. -->
+              <div
+                class="no-print"
+                style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.5rem"
+              >
+                <p-selectbutton
+                  [options]="gravidadesDisponiveis()"
+                  [ngModel]="gravidades()"
+                  (ngModelChange)="gravidades.set($event)"
+                  optionLabel="label"
+                  optionValue="value"
+                  [allowEmpty]="true"
+                  ariaLabel="Filtrar por gravidade"
+                />
+                <p-selectbutton
+                  [options]="statusDisponiveis()"
+                  [ngModel]="statusPend()"
+                  (ngModelChange)="statusPend.set($event)"
+                  optionLabel="label"
+                  optionValue="value"
+                  [allowEmpty]="true"
+                  ariaLabel="Filtrar por status"
+                />
+                @if (filtrosPendenciaAtivos() > 0) {
+                  <p-button
+                    label="Limpar filtros"
+                    icon="pi pi-filter-slash"
+                    [text]="true"
+                    size="small"
+                    severity="secondary"
+                    (onClick)="limparFiltros()"
+                  />
+                }
+              </div>
+
+              @if (pendenciasVisiveis().length === 0) {
+                <div class="trilha-vazia" style="padding: 0.75rem 0">
+                  <i class="pi pi-filter-slash"></i>
+                  <span>Nenhuma pendência corresponde aos filtros aplicados.</span>
+                </div>
+              } @else {
+                @for (p of pendenciasVisiveis(); track p.id) {
+                  <div class="pendencia">
+                    <!-- Severidade por PESO da barra, não por cor de fundo:
+                         sobrevive à impressão em preto e branco. -->
+                    <i [class]="'pendencia-gravidade ' + p.gravidade"></i>
+                    <div>
+                      <div class="pendencia-titulo">
+                        <span class="pendencia-doc">{{ tipoDocLabel(p.tipo_documento) }}</span>
+                        <p-tag
+                          [value]="gravidadeLabels[p.gravidade]"
+                          [pt]="{ root:
+                                                       p.gravidade === 'ALTA' ? 'status-tag status-critico' :
+                                                       p.gravidade === 'MEDIA' ? 'status-tag status-atencao' :
+                                                       'status-tag status-neutro'
+                                                    }"
+                        />
+                        <p-tag
+                          [value]="statusPendLabels[p.status]"
+                          [pt]="{ root:
+                                                       p.status === 'INCONSISTENTE' ? 'status-tag status-atencao' :
+                                                       'status-tag status-neutro'
+                                                    }"
+                        />
+                      </div>
+
+                      @if (p.observacao) {
+                        <p class="pendencia-obs" style="margin: 0">{{ p.observacao }}</p>
+                      }
+
+                      @if (p.crf || p.crt || p.base_calculo || p.receita_declarada) {
+                        <div class="pendencia-dados">
+                          @if (p.crf) {
+                            <span class="pendencia-dado">CRF <b>{{ p.crf }}%</b></span>
+                          }
+                          @if (p.crt) {
+                            <span class="pendencia-dado">CRT <b>{{ p.crt }}</b></span>
+                          }
+                          @if (p.base_calculo) {
+                            <span class="pendencia-dado">
+                              Base <b>{{ formatCurrency(p.base_calculo) }}</b>
+                            </span>
+                          }
+                          @if (p.receita_declarada) {
+                            <span class="pendencia-dado">
+                              Receita <b>{{ formatCurrency(p.receita_declarada) }}</b>
+                            </span>
+                          }
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              }
+            }
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+}

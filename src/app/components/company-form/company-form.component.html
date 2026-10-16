@@ -1,0 +1,172 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ title() }}</h1>
+    <p class="page-subtitle">{{ subtitle() }}</p>
+  </div>
+  <p-button
+    label="Voltar"
+    icon="pi pi-arrow-left"
+    severity="secondary"
+    [outlined]="true"
+    routerLink="/companies"
+  />
+</div>
+
+<form class="section" style="max-width: 46rem" (ngSubmit)="submit()">
+  @if (loading()) {
+    <div class="stack-sm">
+      <p-skeleton width="40%" height="1.5rem" />
+      <p-skeleton width="100%" height="2.75rem" />
+      <p-skeleton width="100%" height="2.75rem" />
+      <p-skeleton width="100%" height="2.75rem" />
+    </div>
+  } @else {
+    <div class="form-grid">
+      <!-- Nome -->
+      <div class="field">
+        <label class="field-label" for="nome">
+          <i class="pi pi-building"></i> Nome da Empresa
+        </label>
+        <input
+          pInputText
+          id="nome"
+          name="nome"
+          [ngModel]="nome()"
+          (ngModelChange)="nome.set($event)"
+          placeholder="Razão social da empresa"
+          [invalid]="submitted() && !nome().trim()"
+        />
+        @if (submitted() && !nome().trim()) {
+          <small class="field-error">Informe o nome da empresa.</small>
+        }
+      </div>
+
+      <!-- CNPJ -->
+      <div class="field">
+        <label class="field-label" for="cnpj">
+          <i class="pi pi-id-card"></i> CNPJ
+        </label>
+        <input
+          pInputText
+          id="cnpj"
+          name="cnpj"
+          inputmode="numeric"
+          [ngModel]="cnpj()"
+          (ngModelChange)="onCnpjInput($event)"
+          (blur)="onCnpjBlur()"
+          placeholder="00.000.000/0000-00"
+          class="mono"
+          [invalid]="(submitted() && !cnpj()) || cnpjInvalid()"
+        />
+        @if (cnpjInvalid()) {
+          <small class="field-error">CNPJ inválido — confira os dígitos verificadores.</small>
+        } @else if (submitted() && !cnpj()) {
+          <small class="field-error">Informe o CNPJ.</small>
+        }
+      </div>
+
+      <!-- ID Domínio -->
+      <div class="field">
+        <label class="field-label" for="idDominio">
+          <i class="pi pi-globe"></i> ID Domínio
+        </label>
+        <p-inputnumber
+          inputId="idDominio"
+          name="idDominio"
+          [ngModel]="idDominio()"
+          (ngModelChange)="idDominio.set($event)"
+          [useGrouping]="false"
+          placeholder="Opcional"
+          styleClass="w-full"
+        />
+        <small class="field-hint">ID do sistema de gestão externo, se houver. Deixe em branco se não usar.</small>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Certificado atual (edição) -->
+    @if (isEdit() && currentCertDate()) {
+      <p-message severity="success" style="display: block; margin-bottom: 1.25rem">
+        <span class="text-sm">
+          Certificado vigente — validade
+          <strong class="mono">{{ currentCertDate() | date: 'dd/MM/yyyy' }}</strong
+          >. Envie um novo arquivo apenas se quiser substituí-lo.
+        </span>
+      </p-message>
+    }
+
+    <!-- Upload do certificado -->
+    <div class="field">
+      <label class="field-label" for="certificate">
+        <i class="pi pi-shield"></i>
+        Certificado Digital {{ certRequired() ? '(arquivo .pfx)' : '(arquivo .pfx) — opcional' }}
+      </label>
+      <p-fileupload
+        name="certificate"
+        mode="basic"
+        chooseLabel="Selecionar PFX"
+        chooseIcon="pi pi-upload"
+        accept=".pfx,.p12"
+        [maxFileSize]="5_000_000"
+        [auto]="true"
+        [customUpload]="true"
+        (onSelect)="onFileSelect($event)"
+        (onClear)="clearFile()"
+        styleClass="w-full"
+      />
+      <small class="field-hint">
+        Arquivo do certificado digital A1 (.pfx), até 5 MB. Usado para autenticar na prefeitura.
+      </small>
+      @if (selectedFileName()) {
+        <div class="inline-gap" style="margin-top: 0.5rem">
+          <i class="pi pi-file text-primary"></i>
+          <span class="text-sm">{{ selectedFileName() }}</span>
+        </div>
+      }
+    </div>
+
+    <!-- Senha do certificado -->
+    <div class="field">
+      <label class="field-label" for="password">
+        <i class="pi pi-key"></i>
+        Senha do Certificado {{ certRequired() ? '' : '— deixe em branco para manter' }}
+      </label>
+      <p-password
+        inputId="password"
+        name="password"
+        [ngModel]="password()"
+        (ngModelChange)="password.set($event)"
+        [feedback]="false"
+        [toggleMask]="true"
+        placeholder="Senha do arquivo PFX"
+        styleClass="w-full"
+        [inputStyle]="{ width: '100%' }"
+      />
+      <small class="field-hint">
+        Na edição: deixe em branco para manter a senha atual.
+      </small>
+      @if (submitted() && certRequired() && !password()) {
+        <small class="field-error">Informe a senha do certificado.</small>
+      }
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="row-between">
+      <p-button
+        label="Cancelar"
+        icon="pi pi-arrow-left"
+        severity="secondary"
+        [text]="true"
+        routerLink="/companies"
+      />
+      <p-button
+        [label]="isEdit() ? 'Salvar Alterações' : 'Cadastrar Empresa'"
+        [icon]="saving() ? 'pi pi-spin pi-spinner' : 'pi pi-check'"
+        type="submit"
+        [disabled]="saving()"
+      />
+    </div>
+  }
+</form>

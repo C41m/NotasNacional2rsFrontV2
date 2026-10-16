@@ -1,0 +1,352 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Documentos Fiscais</h1>
+    <p class="page-subtitle">Competência, tipo e situação dos documentos escriturados</p>
+  </div>
+  <p-button
+    label="Atualizar"
+    pTooltip="Atualizar lista"
+    [icon]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-refresh'"
+    severity="secondary"
+    [outlined]="true"
+    [disabled]="loading()"
+    (onClick)="load()"
+  />
+</div>
+
+<!-- ═══ Filtros ══════════════════════════════════════════════════
+     Barra compacta: selects nativos em vez de filtros em diálogo.
+     O volume de documentos é baixo (6 linhas hoje), então sobrepor a
+     tabela com um drawer custaria mais do que ajuda. -->
+<div class="filtros" style="margin-bottom: 1rem">
+  <div class="field">
+    <label class="field-label" for="f-empresa">Empresa</label>
+    <p-select
+      inputId="f-empresa"
+      [options]="empresas()"
+      [ngModel]="empresaId()"
+      (ngModelChange)="empresaId.set($event)"
+      optionLabel="nome"
+      optionValue="id"
+      [showClear]="true"
+      placeholder="Todas as empresas"
+      styleClass="w-full"
+    />
+  </div>
+
+  <div class="field">
+    <label class="field-label" for="f-tipo">Tipo</label>
+    <p-select
+      inputId="f-tipo"
+      [options]="typeOptions"
+      [ngModel]="tipo()"
+      (ngModelChange)="tipo.set($event)"
+      optionLabel="label"
+      optionValue="value"
+      [showClear]="true"
+      placeholder="Todos os tipos"
+      styleClass="w-full"
+    />
+  </div>
+
+  <div class="field">
+    <label class="field-label" for="f-periodo">Competência</label>
+    <input
+      pInputText
+      id="f-periodo"
+      class="mono"
+      inputmode="numeric"
+      maxlength="7"
+      placeholder="AAAA-MM"
+      [ngModel]="periodo()"
+      (ngModelChange)="onPeriodoInput($event)"
+      style="text-align: center"
+    />
+  </div>
+
+  <div class="field">
+    <span class="field-label">Ativos</span>
+    <div class="filtros-acoes">
+      <p-togglebutton
+        [ngModel]="somenteAtivos()"
+        (ngModelChange)="toggleAtivos()"
+        onLabel="Somente ativos"
+        offLabel="Inclui inativos"
+        onIcon="pi pi-check"
+        offIcon="pi pi-ban"
+      />
+    </div>
+  </div>
+</div>
+
+@if (temFiltro()) {
+  <div
+    class="row-between"
+    style="margin-bottom: 1rem; padding: 0.625rem 0.875rem; background: var(--ledger-s1); border: 1px solid var(--ledger-rule); border-radius: 2px"
+  >
+    <div class="inline-gap" style="flex-wrap: wrap">
+      <span style="font-size: 0.75rem; color: var(--p-surface-500)">Filtros:</span>
+      @for (f of filtrosAtivos(); track f.label) {
+        <span class="chip-ativos">{{ f.label }}: <b>{{ f.value }}</b></span>
+      }
+    </div>
+    <p-button
+      label="Limpar"
+      icon="pi pi-filter-slash"
+      [text]="true"
+      size="small"
+      severity="secondary"
+      (onClick)="clearFilters()"
+    />
+  </div>
+}
+
+@if (error() && !loading()) {
+  <div class="callout callout-danger" style="align-items: center">
+    <i class="pi pi-exclamation-circle"></i>
+    <div>
+      <strong>Erro ao carregar documentos</strong>
+      <span>{{ error() }}</span>
+    </div>
+    <p-button label="Tentar novamente" icon="pi pi-refresh" size="small" [outlined]="true" class="push-right no-print" (onClick)="load()" />
+  </div>
+}
+
+<!-- ═══ Tabela ═══════════════════════════════════════════════════
+     [lazy] porque a paginação é do servidor: cada página é uma
+     requisição nova, não um fatiamento do array carregado. -->
+<div class="section" style="padding: 0">
+  <div class="table-wrap">
+  <p-table
+    [value]="docs()"
+    dataKey="id"
+    [lazy]="true"
+    (onLazyLoad)="onLazyLoad($event)"
+    (onSort)="onSort($event)"
+    (onPage)="onPage($event)"
+    (onRowsChange)="onRowsChange($event)"
+    [paginator]="true"
+    [rows]="rows()"
+    [first]="first()"
+    [totalRecords]="total()"
+    [loading]="loading()"
+    [rowsPerPageOptions]="[10, 20, 50, 100]"
+    [showCurrentPageReport]="true"
+    currentPageReportTemplate="{first}–{last} de {totalRecords}"
+    [rowHover]="true"
+    [tableStyle]="{ 'min-width': '62rem' }"
+    sortField="periodo"
+    [sortOrder]="-1"
+  >
+    <ng-template #header>
+      <tr>
+        <th pSortableColumn="tipo_documento" style="width: 13rem">
+          Tipo <p-sorticon field="tipo_documento" />
+        </th>
+        <th pSortableColumn="numero_documento" style="width: 14rem">
+          Documento <p-sorticon field="numero_documento" />
+        </th>
+        <th pSortableColumn="periodo" style="width: 8rem">
+          Competência <p-sorticon field="periodo" />
+        </th>
+        <th pSortableColumn="data_emissao" style="width: 9rem">
+          Emissão <p-sorticon field="data_emissao" />
+        </th>
+        <th style="width: 8rem; text-align: center">Situação</th>
+        <th pSortableColumn="valor_total" style="width: 10rem; text-align: right">
+          Valor <p-sorticon field="valor_total" />
+        </th>
+        <th style="width: 5rem; text-align: right">Ações</th>
+      </tr>
+    </ng-template>
+
+    <ng-template #body let-doc>
+      <tr [class.doc-inativo]="!doc.ativo">
+        <td>
+          <span class="doc-tipo">
+            <i [class]="tipoIcon(doc.tipo_documento)"></i>
+            {{ tipoLabel(doc.tipo_documento) }}
+          </span>
+        </td>
+
+        <td>
+          @if (doc.numero_documento) {
+            <span class="doc-ref">{{ doc.numero_documento }}</span>
+          } @else {
+            <span class="text-dim">—</span>
+          }
+        </td>
+
+        <td>
+          <span class="mono" style="font-variant-numeric: tabular-nums">
+            {{ formatMesAno(doc.periodo) }}
+          </span>
+        </td>
+
+        <td>
+          <span class="mono" style="font-variant-numeric: tabular-nums">
+            {{ formatDate(doc.data_emissao) || '—' }}
+          </span>
+        </td>
+
+        <td style="text-align: center">
+          <p-tag
+            [value]="situacaoLabel(doc.situacao)"
+            [pt]="{ root: situacaoSeverity(doc.situacao) }"
+          />
+        </td>
+
+        <td style="text-align: right">
+          <!-- PGDAS-D não tem valor próprio: 0,00 é informação, não ausência. -->
+          <span [class]="'doc-valor' + (isZero(doc.valor_total) ? ' zero' : '')">
+            {{ valor(doc.valor_total) }}
+          </span>
+        </td>
+
+        <td>
+          <div class="table-actions">
+            <p-button
+              icon="pi pi-eye"
+              [text]="true"
+              [rounded]="true"
+              size="small"
+              severity="secondary"
+              pTooltip="Detalhes"
+              tooltipPosition="top"
+              (onClick)="openDetail(doc)"
+            />
+            <p-button
+              icon="pi pi-trash"
+              [text]="true"
+              [rounded]="true"
+              size="small"
+              severity="danger"
+              pTooltip="Excluir"
+              tooltipPosition="top"
+              [loading]="deletingId() === doc.id"
+              (onClick)="confirmDelete(doc)"
+            />
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+
+    <ng-template #emptymessage>
+      <tr>
+        <td colspan="7">
+          @if (temFiltro()) {
+            <div class="empty-state">
+              <i class="pi pi-filter-slash"></i>
+              <h3>Nenhum documento para estes filtros</h3>
+              <p>Ajuste os critérios ou limpe os filtros para ver todos os documentos.</p>
+              <p-button
+                label="Limpar filtros"
+                icon="pi pi-filter-slash"
+                severity="secondary"
+                [outlined]="true"
+                (onClick)="clearFilters()"
+              />
+            </div>
+          } @else {
+            <div class="empty-state">
+              <i class="pi pi-folder-open"></i>
+              <h3>Nenhum documento fiscal lançado</h3>
+              <p>
+                Os documentos aparecem aqui depois de extraídos do sistema da empresa.
+                Verifique se a coleta de NFSe já rodou.
+              </p>
+            </div>
+          }
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+  </div>
+</div>
+
+<!-- ═══ Detalhe ═══════════════════════════════════════════════════
+     Leitura apenas: o backend não tem PATCH, então "editar" não
+     existe. O diálogo mostra a ficha completa do documento. -->
+<p-dialog
+  [visible]="detailVisible()"
+  (visibleChange)="!$event && closeDetail()"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{ width: '46rem', 'max-width': '95vw' }"
+  styleClass="ledger-dialog"
+  [header]="selected() ? tipoLabel(selected()!.tipo_documento) + ' · ' + formatMesAno(selected()!.periodo) : 'Documento'"
+>
+  @if (detailLoading()) {
+    <div class="stack-sm">
+      <p-skeleton width="50%" height="1.5rem" />
+      <p-skeleton width="100%" height="3rem" />
+      <p-skeleton width="100%" height="3rem" />
+      <p-skeleton width="100%" height="3rem" />
+    </div>
+  } @else if (selected(); as d) {
+    <dl class="detalhe-facts">
+      <div class="fact">
+        <dt>Tipo</dt>
+        <dd>{{ tipoLabel(d.tipo_documento) }}</dd>
+      </div>
+      <div class="fact">
+        <dt>Competência</dt>
+        <dd>{{ formatMesAno(d.periodo) }}</dd>
+      </div>
+      <div class="fact">
+        <dt>Número</dt>
+        <dd [class.vazio]="!d.numero_documento">{{ d.numero_documento || '—' }}</dd>
+      </div>
+      <div class="fact">
+        <dt>Série</dt>
+        <dd [class.vazio]="!d.serie">{{ d.serie || '—' }}</dd>
+      </div>
+      <div class="fact">
+        <dt>Emissão</dt>
+        <dd [class.vazio]="!d.data_emissao">{{ formatDate(d.data_emissao) || '—' }}</dd>
+      </div>
+      <div class="fact">
+        <dt>Vencimento</dt>
+        <dd [class.vazio]="!d.data_vencimento">{{ formatDate(d.data_vencimento) || '—' }}</dd>
+      </div>
+      <div class="fact">
+        <dt>Pagamento</dt>
+        <dd [class.vazio]="!d.data_pagamento">{{ formatDate(d.data_pagamento) || '—' }}</dd>
+      </div>
+      <div class="fact">
+        <dt>Valor total</dt>
+        <dd [class.vazio]="d.valor_total === null">{{ valor(d.valor_total) }}</dd>
+      </div>
+      <div class="fact">
+        <dt>Situação</dt>
+        <dd [class.vazio]="!d.situacao">{{ situacaoLabel(d.situacao) }}</dd>
+      </div>
+      <div class="fact">
+        <dt>Ativo</dt>
+        <dd>{{ d.ativo ? 'Sim' : 'Não' }}</dd>
+      </div>
+    </dl>
+
+    @if (d.chave_acesso) {
+      <div style="margin-top: 1.25rem">
+        <span class="section-subtitle">Chave de acesso</span>
+        <div class="doc-ref" style="word-break: break-all">{{ d.chave_acesso }}</div>
+      </div>
+    }
+
+    @if (d.arquivo_fonte) {
+      <div style="margin-top: 1.25rem">
+        <span class="section-subtitle">Arquivo de origem</span>
+        <div class="doc-ref">{{ d.arquivo_fonte }}</div>
+      </div>
+    }
+
+    @if (d.observacao) {
+      <div style="margin-top: 1.25rem">
+        <span class="section-subtitle">Observação</span>
+        <div class="laudo" style="margin-top: 0.5rem">{{ d.observacao }}</div>
+      </div>
+    }
+  }
+</p-dialog>

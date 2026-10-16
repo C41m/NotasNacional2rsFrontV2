@@ -1,0 +1,723 @@
+/* ══════════════════════════════════════════════════════════════════
+   2RS Notas — camada "ledger de auditoria"
+   Anexado ao styles.css global. Usado por /auditoria e /documentos-fiscais.
+
+   Direção: o material verbal do domínio é contabilidade forense —
+   documento, competência, pendência, conferência. A referência não é
+   dashboard genérico, é o razão contábil: coluna, tinta, carimbo.
+
+   Três decisões estruturais:
+   1. Superfície por elevação tonal (um degrau por vez), nunca sombra
+      decorativa — rgba(0,0,0,.1) em tudo é o tell de UI gerada.
+   2. Monospace como SEGUNDA VOZ: CNPJ, chave de acesso, competência e
+      valores são a coluna do razão; o sans cuida do texto corrido.
+   3. Verde fiscal e vermelho de auto de infração, dessaturados. Legíveis
+      sob luz fluorescente de escritório, não neon.
+   ══════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Degraus de superfície. bg < s1 < s2 < s3 — cada um exatamente um
+     passo acima do anterior, para que a hierarquia se leia sem borda. */
+  --ledger-bg: #0b0f10;
+  --ledger-s1: #101617;
+  --ledger-s2: #151d1e;
+  --ledger-s3: #1c2627;
+
+  /* Régua: hairline mais escura que a superfície, nunca mais clara. */
+  --ledger-rule: #223030;
+  --ledger-rule-soft: #182424;
+
+  /* Tinta: verde fiscal / vermelho de auto de infração. */
+  --ink-fiscal: #34b98a;
+  --ink-fiscal-dim: #24674f;
+  --ink-autoinfracao: #e0654f;
+  --ink-autoinfracao-dim: #6d2e24;
+  --ink-pendencia: #d9a441;
+  --ink-pendencia-dim: #6b5120;
+
+  /* Teal da marca, reservado para INTERAÇÃO (não para status). */
+  --ledger-accent: #2dd4bf;
+
+  --ledger-font: var(--font-mono);
+}
+
+/* Empurra o elemento para o fim de um container flex. Existe porque
+   `style="margin-left:auto"` não é CSSProperties válido nos bindings
+   de componente do Angular (p-button, p-tag). */
+.push-right {
+  margin-left: auto;
+}
+
+/* Legenda da trilha alinhada à direita (documentos faltantes). */
+.trilha-count-fim {
+  margin-left: auto;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   0. Stat-cards em páginas de gestão — mesma linguagem do ledger
+   ───────────────────────────────────────────────────────────────── */
+
+.stat-card {
+  background: var(--ledger-s1);
+  border: 1px solid var(--ledger-rule);
+  border-radius: 2px; /* canto reto, como o resto do ledger */
+}
+
+.stat-card-icon {
+  background: var(--ledger-s2);
+  border: 1px solid var(--ledger-rule);
+  border-radius: 2px;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   1. Trilha de conformidade
+   Substitui os 4 stat-cards com ícone. A régua segmentada É o dado:
+   mostra a proporção de empresas em cada faixa de uma vez, e o número
+   grande é a leitura primária. Um elemento memorável, o resto quieto.
+   ───────────────────────────────────────────────────────────────── */
+
+.trilha {
+  background: var(--ledger-s1);
+  border: 1px solid var(--ledger-rule);
+  border-radius: 2px; /* quase reto: papel, não plástico */
+  padding: 1.5rem 1.75rem 1.25rem;
+}
+
+.trilha-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.trilha-figure {
+  display: flex;
+  align-items: baseline;
+  gap: 0.625rem;
+}
+
+.trilha-figure b {
+  font-family: var(--ledger-font);
+  font-size: 2.75rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--p-surface-50, #f4f4f4);
+}
+
+.trilha-figure span {
+  font-size: 0.9375rem;
+  color: var(--p-surface-400, #94a3b8);
+}
+
+.trilha-legenda {
+  font-size: 0.75rem;
+  color: var(--p-surface-500, #64748b);
+  max-width: 34ch;
+  line-height: 1.5;
+}
+
+/* A régua: três segmentos contíguos, sem respiro entre eles. É uma
+   barra proporcional, não três botões. */
+.trilha-bar {
+  display: flex;
+  height: 0.5rem;
+  background: var(--ledger-s3);
+  border-radius: 1px;
+  overflow: hidden;
+  margin-bottom: 0.875rem;
+}
+
+.trilha-seg {
+  height: 100%;
+  transition: width 0.45s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.trilha-seg-conforme { background: var(--ink-fiscal); }
+.trilha-seg-atencao  { background: var(--ink-pendencia); }
+.trilha-seg-critico  { background: var(--ink-autoinfracao); }
+
+.trilha-counts {
+  display: flex;
+  gap: 1.75rem;
+  flex-wrap: wrap;
+}
+
+.trilha-count {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--p-surface-300, #cbd5e1);
+}
+
+.trilha-count b {
+  font-family: var(--ledger-font);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* Marcador de cor da legenda — quadrado sólido, não bolinha. A bolinha
+   arredondada é o default; o quadrado lê como "categoria contábil". */
+.trilha-key {
+  width: 0.5rem;
+  height: 0.5rem;
+  flex: none;
+  border-radius: 1px;
+}
+
+.trilha-key-conforme { background: var(--ink-fiscal); }
+.trilha-key-atencao  { background: var(--ink-pendencia); }
+.trilha-key-critico  { background: var(--ink-autoinfracao); }
+
+/* Nenhuma empresa no período: a régua fica vazia, com mensagem no
+   lugar da figura — evita mostrar "0%" como se fosse um resultado. */
+.trilha-vazia {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  color: var(--p-surface-400, #94a3b8);
+  font-size: 0.875rem;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   2. Arco de conformidade  (o elemento memorável)
+   SVG inline, sem biblioteca de chart. Um arco de 240° com o percentual
+   no centro — o número que o contador quer ver antes de qualquer outro.
+   ───────────────────────────────────────────────────────────────── */
+
+.arco {
+  display: grid;
+  place-items: center;
+  position: relative;
+  width: 168px;
+  height: 168px;
+  flex: none;
+}
+
+.arco svg {
+  transform: rotate(-210deg);
+  overflow: visible;
+}
+
+.arco-track {
+  fill: none;
+  stroke: var(--ledger-s3);
+  stroke-width: 9;
+  stroke-linecap: butt;
+}
+
+.arco-fill {
+  fill: none;
+  stroke-width: 9;
+  stroke-linecap: butt;
+  transition: stroke-dashoffset 0.7s cubic-bezier(0.2, 0, 0, 1), stroke 0.3s;
+}
+
+.arco-fill.conforme { stroke: var(--ink-fiscal); }
+.arco-fill.atencao  { stroke: var(--ink-pendencia); }
+.arco-fill.critico  { stroke: var(--ink-autoinfracao); }
+
+.arco-centro {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+}
+
+.arco-valor {
+  font-family: var(--ledger-font);
+  font-size: 2.25rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--p-surface-50, #f4f4f4);
+}
+
+.arco-valor small {
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: var(--p-surface-500, #64748b);
+  margin-left: 0.0625rem;
+}
+
+.arco-rotulo {
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  color: var(--p-surface-500, #64748b);
+  font-weight: 600;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   3. Painel de detalhe da empresa
+   ───────────────────────────────────────────────────────────────── */
+
+.detalhe {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+@media (max-width: 767px) {
+  .detalhe {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+}
+
+.detalhe-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: 0;
+  border: 1px solid var(--ledger-rule);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+/* Cada fato é uma célula do razão: rótulo em cima, valor embaixo,
+   separados por régua. Sem card individual — uma grade só. */
+.fact {
+  padding: 0.75rem 0.9375rem;
+  border-right: 1px solid var(--ledger-rule-soft);
+  border-bottom: 1px solid var(--ledger-rule-soft);
+  min-width: 0;
+}
+
+.fact dt {
+  font-size: 0.6875rem;
+  letter-spacing: 0.07em;
+  color: var(--p-surface-300, #cbd5e1);
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fact dd {
+  margin: 0;
+  font-family: var(--ledger-font);
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--p-surface-100, #e2e8f0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fact dd.vazio {
+  font-family: var(--font-sans);
+  color: var(--p-surface-600, #475569);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   4. Linha do razão — a lista de empresas em auditoria
+   Régua esquerda de status. Não é badge: o badge em toda célula é o
+   padrão; a margem colorida informa sem competir com o texto.
+   ───────────────────────────────────────────────────────────────── */
+
+.razao {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--ledger-rule);
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--ledger-s1);
+}
+
+.razao-item {
+  display: grid;
+  grid-template-columns: 3px 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.875rem 1.125rem;
+  border-bottom: 1px solid var(--ledger-rule-soft);
+  background: transparent;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  transition: background 0.14s ease;
+}
+
+.razao-item:last-child {
+  border-bottom: 0;
+}
+
+.razao-item:hover {
+  background: var(--ledger-s2);
+}
+
+.razao-item:focus-visible {
+  outline: 2px solid var(--ledger-accent);
+  outline-offset: -2px;
+}
+
+.razao-marca {
+  width: 3px;
+  height: 100%;
+  min-height: 2.25rem;
+  border-radius: 0;
+}
+
+.razao-marca.conforme { background: var(--ink-fiscal); }
+.razao-marca.atencao  { background: var(--ink-pendencia); }
+.razao-marca.critico  { background: var(--ink-autoinfracao); }
+
+.razao-corpo {
+  min-width: 0;
+}
+
+.razao-nome {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--p-surface-100, #e2e8f0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 0.1875rem;
+}
+
+.razao-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-family: var(--ledger-font);
+  font-size: 0.75rem;
+  color: var(--p-surface-500, #64748b);
+  font-variant-numeric: tabular-nums;
+  flex-wrap: wrap;
+}
+
+.razao-meta .sep {
+  color: var(--ledger-rule);
+}
+
+.razao-dir {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: none;
+}
+
+.razao-pct {
+  font-family: var(--ledger-font);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  min-width: 4.25rem;
+  text-align: right;
+}
+
+.razao-pct.conforme { color: var(--ink-fiscal); }
+.razao-pct.atencao  { color: var(--ink-pendencia); }
+.razao-pct.critico  { color: var(--ink-autoinfracao); }
+
+/* ─────────────────────────────────────────────────────────────────
+   5. Seletor de competência
+   MM/AAAA como texto com máscara, não p-datepicker: o backend só
+   aceita YYYY-MM e o usuário thinks em "setembro de 2026". Um datepicker
+   de mês aqui seria três cliques para digitar sete caracteres.
+   ───────────────────────────────────────────────────────────────── */
+
+.competencia {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.competencia input {
+  width: 7.5rem;
+  font-family: var(--ledger-font);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  letter-spacing: 0.08em;
+}
+
+.competencia-nav {
+  display: flex;
+  gap: 0.25rem;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   6. Filtros — barra compacta, colapsável
+   ───────────────────────────────────────────────────────────────── */
+
+.filtros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.875rem;
+  align-items: end;
+}
+
+.filtros-acoes {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.chip-ativos {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4375rem;
+  padding: 0.3125rem 0.625rem;
+  background: var(--ledger-s2);
+  border: 1px solid var(--ledger-rule);
+  border-radius: 2px;
+  font-size: 0.75rem;
+  color: var(--p-surface-300, #cbd5e1);
+}
+
+.chip-ativos b {
+  font-family: var(--ledger-font);
+  font-variant-numeric: tabular-nums;
+  color: var(--ledger-accent);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   7. Documentos fiscais
+   ───────────────────────────────────────────────────────────────── */
+
+.doc-valor {
+  font-family: var(--ledger-font);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.doc-valor.zero {
+  color: var(--p-surface-600, #475569);
+}
+
+.doc-tipo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.doc-tipo .pi {
+  font-size: 0.75rem;
+  color: var(--p-surface-500, #64748b);
+}
+
+/* Série de documento (PGDAS_D-202606) — a segunda voz monoespaçada. */
+.doc-ref {
+  font-family: var(--ledger-font);
+  font-size: 0.75rem;
+  color: var(--p-surface-400, #94a3b8);
+  letter-spacing: 0.02em;
+}
+
+.doc-inativo td {
+  opacity: 0.5;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   8. Análise textual (analise_completa / observacao_geral)
+   Texto do auditor. Justificado como parágrafo de laudo, com um
+   filete à esquerda — não um card com borda colorida nos 4 lados.
+   ───────────────────────────────────────────────────────────────── */
+
+.laudo {
+  border-left: 2px solid var(--ledger-rule);
+  padding: 0.125rem 0 0.125rem 1.125rem;
+  color: var(--p-surface-300, #cbd5e1);
+  font-size: 0.875rem;
+  line-height: 1.7;
+  max-width: 72ch;
+  white-space: pre-line;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   9. Pendências
+   ───────────────────────────────────────────────────────────────── */
+
+.pendencia {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.875rem;
+  padding: 0.875rem 0;
+  border-bottom: 1px solid var(--ledger-rule-soft);
+}
+
+.pendencia:last-child {
+  border-bottom: 0;
+}
+
+/* Severidade por peso da barra, não por cor de fundo: grave é grosso,
+   médio é médio, leve é fino. Legível em bw (impressão de relatório). */
+.pendencia-gravidade {
+  width: 3px;
+  border-radius: 1px;
+  align-self: stretch;
+}
+
+.pendencia-gravidade.ALTA { background: var(--ink-autoinfracao); }
+.pendencia-gravidade.MEDIA { background: var(--ink-pendencia); }
+.pendencia-gravidade.BAIXA { background: var(--p-surface-500, #64748b); }
+
+.pendencia-titulo {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.25rem;
+}
+
+.pendencia-doc {
+  font-family: var(--ledger-font);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--p-surface-100, #e2e8f0);
+  letter-spacing: 0.02em;
+}
+
+.pendencia-obs {
+  font-size: 0.8125rem;
+  color: var(--p-surface-400, #94a3b8);
+  line-height: 1.55;
+}
+
+.pendencia-dados {
+  display: flex;
+  gap: 1.25rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.pendencia-dado {
+  font-family: var(--ledger-font);
+  font-size: 0.75rem;
+  color: var(--p-surface-500, #64748b);
+  font-variant-numeric: tabular-nums;
+}
+
+.pendencia-dado b {
+  color: var(--p-surface-200, #e0e0e0);
+  font-weight: 600;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   10. Ajustes de PrimeNG para o contexto ledger
+   ───────────────────────────────────────────────────────────────── */
+
+/* Badge de status: retângulo com canto reto, não pílula. A pílula é
+   o default do PrimeNG e o "generated" tell; no domínio contábil o
+   status é etiquetaAfiada, não cápsula. */
+.p-tag.status-tag {
+  border-radius: 2px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.1875rem 0.4375rem;
+}
+
+/* As cores do badge vêm do status fiscal, não do palette genérico. */
+.p-tag.status-conforme {
+  background: color-mix(in srgb, var(--ink-fiscal) 16%, transparent);
+  color: var(--ink-fiscal);
+  border: 1px solid color-mix(in srgb, var(--ink-fiscal) 34%, transparent);
+}
+
+.p-tag.status-atencao {
+  background: color-mix(in srgb, var(--ink-pendencia) 16%, transparent);
+  color: var(--ink-pendencia);
+  border: 1px solid color-mix(in srgb, var(--ink-pendencia) 34%, transparent);
+}
+
+.p-tag.status-critico {
+  background: color-mix(in srgb, var(--ink-autoinfracao) 16%, transparent);
+  color: var(--ink-autoinfracao);
+  border: 1px solid color-mix(in srgb, var(--ink-autoinfracao) 34%, transparent);
+}
+
+.p-tag.status-neutro {
+  background: var(--ledger-s3);
+  color: var(--p-surface-400, #94a3b8);
+  border: 1px solid var(--ledger-rule);
+}
+
+/* O painel de detalhe não repete a borda do p-dialog com a dele. */
+.ledger-dialog .p-dialog-header {
+  border-bottom: 1px solid var(--ledger-rule);
+  padding-bottom: 1rem;
+}
+
+.ledger-dialog .p-dialog-content {
+  padding-top: 1.25rem;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   11. Reduced motion — estende o @media global do styles.css
+   ───────────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .trilha-seg,
+  .arco-fill,
+  .meter-fill,
+  .razao-item {
+    transition: none !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   12. Impressão — o relatório vai para o contador
+   Remove a casca do app e mantém a hierarquia. Sombra some, tinta
+   fica, superfícies viram branco.
+   ───────────────────────────────────────────────────────────────── */
+
+@media print {
+  .shell-sidebar,
+  .topbar,
+  .p-toast,
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  .trilha,
+  .razao,
+  .detalhe-facts,
+  .ledger-dialog {
+    background: #fff !important;
+    border-color: #999 !important;
+  }
+
+  .fact dd,
+  .fact dt,
+  .razao-nome,
+  .trilha-figure b,
+  .arco-valor {
+    color: #000 !important;
+  }
+
+  .arco-track {
+    stroke: #ddd;
+  }
+
+  .laudo,
+  .pendencia-obs {
+    color: #333;
+  }
+}

@@ -1,0 +1,84 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Download NFSe</h1>
+    <p class="page-subtitle">Baixe todas as notas fiscais das empresas selecionadas</p>
+  </div>
+  <p-button
+    label="Alterar seleção"
+    icon="pi pi-arrow-left"
+    severity="secondary"
+    [outlined]="true"
+    routerLink="/companies"
+  />
+</div>
+
+<p-message severity="info" style="display: block; margin-bottom: 1.5rem">
+  <span class="text-sm">
+    <strong>{{ companyIds().length }}</strong>
+    empresa(s) selecionada(s) — o download usará o certificado digital de cada uma.
+  </span>
+</p-message>
+
+<form class="section" style="max-width: 46rem" (ngSubmit)="submit()">
+  <!-- Tipo de download -->
+  <div class="field">
+    <span class="field-label">
+      <i class="pi pi-save"></i> Tipo de Download
+    </span>
+    <p-selectbutton
+      name="downloadType"
+      [options]="typeOptions"
+      [ngModel]="downloadType()"
+      (ngModelChange)="onTypeChange($event)"
+      optionLabel="label"
+      optionValue="value"
+      [allowEmpty]="false"
+      inputStyleClass="w-full"
+    >
+      <ng-template #item let-option>
+        <span
+          class="inline-gap"
+          style="gap: 0.375rem"
+          [class.opacity-50]="option.disabled"
+          [pTooltip]="option.disabled ? option.tooltip : null"
+          tooltipPosition="top"
+        >
+          <i [class]="option.icon"></i>
+          {{ option.label }}
+          @if (option.disabled) {
+            <i class="pi pi-lock text-xs text-warn"></i>
+          }
+        </span>
+      </ng-template>
+    </p-selectbutton>
+    <small class="field-hint" style="margin-top: 0.375rem">
+      PDF e XML+PDF: em desenvolvimento. Baixando XML é possível gerar o PDF no portal da NFS-e.
+    </small>
+  </div>
+
+  <div class="callout callout-info" style="margin-top: 0.5rem">
+    <i class="pi pi-info-circle"></i>
+    <div>
+      <strong>Todas as notas disponíveis</strong>
+      <span>O ADN retorna o histórico completo da empresa. O ZIP será organizado por tipo, papel e competência.</span>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="row-between">
+    <p-button
+      label="Voltar para empresas"
+      icon="pi pi-arrow-left"
+      severity="secondary"
+      [text]="true"
+      routerLink="/companies"
+    />
+    <p-button
+      [label]="loading() ? 'Iniciando...' : 'Baixar NFSe'"
+      [icon]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-download'"
+      type="submit"
+      [disabled]="!canSubmit()"
+    />
+  </div>
+</form>

@@ -1,0 +1,186 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Downloads Ativos</h1>
+    <p class="page-subtitle">Acompanhe e gerencie os downloads em andamento</p>
+  </div>
+  <div class="inline-gap">
+    <p-button
+        label="Atualizar"
+        pTooltip="Atualizar lista"
+      [icon]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-refresh'"
+      severity="secondary"
+      [outlined]="true"
+      [disabled]="loading()"
+      (onClick)="loadBatches()"
+    />
+    <p-button label="Novo Download" icon="pi pi-plus" routerLink="/download" />
+  </div>
+</div>
+
+@if (!loading() && batches().length > 0) {
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-card-icon tone-primary"><i class="pi pi-list"></i></div>
+      <div class="stat-card-body">
+        <span class="stat-card-label">Total</span>
+        <span class="stat-card-value">{{ batches().length }}</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-icon tone-info"><i class="pi pi-spin pi-spinner"></i></div>
+      <div class="stat-card-body">
+        <span class="stat-card-label">Processando</span>
+        <span class="stat-card-value">{{ processingCount() }}</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-icon tone-warn"><i class="pi pi-hourglass"></i></div>
+      <div class="stat-card-body">
+        <span class="stat-card-label">Na Fila</span>
+        <span class="stat-card-value text-warn">{{ queuedCount() }}</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-icon tone-success"><i class="pi pi-check-circle"></i></div>
+      <div class="stat-card-body">
+        <span class="stat-card-label">Encerrados</span>
+        <span class="stat-card-value text-success">{{ completedCount() }}</span>
+      </div>
+    </div>
+  </div>
+}
+
+@if (error() && !loading()) {
+  <div class="callout callout-danger" style="align-items: center">
+    <i class="pi pi-exclamation-circle"></i>
+    <div>
+      <strong>Erro ao carregar</strong>
+      <span>{{ error() }}</span>
+    </div>
+    <p-button label="Tentar novamente" icon="pi pi-refresh" size="small" [outlined]="true" class="push-right no-print" (onClick)="loadBatches()" />
+  </div>
+}
+
+@if (loading()) {
+  <div class="section">
+    <div class="stack-sm">
+      <p-skeleton width="30%" height="1.25rem" />
+      <p-skeleton width="100%" height="2.75rem" />
+      <p-skeleton width="100%" height="2.75rem" />
+      <p-skeleton width="100%" height="2.75rem" />
+      <p-skeleton width="100%" height="2.75rem" />
+    </div>
+  </div>
+} @else if (batches().length === 0 && !error()) {
+  <div class="section">
+    <div class="empty-state">
+      <i class="pi pi-cloud"></i>
+      <h3>Nenhum download ativo</h3>
+      <p>Todos os downloads foram concluídos ou nunca foram iniciados.</p>
+      <p-button label="Iniciar novo download" icon="pi pi-plus" routerLink="/download" />
+    </div>
+  </div>
+} @else if (batches().length > 0) {
+  <div class="section">
+    <div class="table-wrap">
+      <p-table
+        [value]="batches()"
+        dataKey="batchId"
+        [rowHover]="true"
+        [tableStyle]="{ 'min-width': '58rem' }"
+      >
+        <ng-template #header>
+          <tr>
+            <th style="width: 11rem">Batch</th>
+            <th style="width: 9rem; text-align: center">Status</th>
+            <th style="width: 13rem">Progresso</th>
+            <th style="width: 7rem; text-align: center">Empresas</th>
+            <th style="width: 13rem">Período</th>
+            <th style="width: 10rem">Criado em</th>
+            <th style="width: 5rem; text-align: right">Ações</th>
+          </tr>
+        </ng-template>
+
+        <ng-template #body let-batch>
+          <tr>
+            <td>
+              <button
+                type="button"
+                class="table-code-link"
+                class="table-code"
+                style="background: none; border: 0; padding: 0; color: var(--p-primary-color); cursor: pointer"
+                (click)="openBatch(batch.batchId)"
+              >
+                {{ shortId(batch.batchId) }}
+              </button>
+            </td>
+
+            <td style="text-align: center">
+              <p-tag
+                [value]="stateLabel(batch.status)"
+                [severity]="stateSeverity(batch.status)"
+                [rounded]="true"
+              />
+            </td>
+
+            <td>
+              <div class="meter">
+                <div class="meter-track">
+                  <div
+                    class="meter-fill"
+                    [class.done]="progressOf(batch) === 100"
+                    [style.width.%]="progressOf(batch)"
+                  ></div>
+                </div>
+                <span class="meter-value">{{ progressOf(batch) }}%</span>
+              </div>
+            </td>
+
+            <td style="text-align: center">
+              <span class="text-sm">{{ batch.companyCount }}</span>
+            </td>
+
+            <td>
+              <span class="table-code">
+                {{ batch.datainicio || '—' }} → {{ batch.datafim || '—' }}
+              </span>
+            </td>
+
+            <td>
+              <span class="table-code">{{ formatDateTime(batch.createdAt) }}</span>
+            </td>
+
+            <td>
+              <div class="table-actions">
+                @if (isActive(batch)) {
+                  <p-button
+                    icon="pi pi-times"
+                    [text]="true"
+                    [rounded]="true"
+                    size="small"
+                    severity="danger"
+                    pTooltip="Cancelar"
+                    tooltipPosition="top"
+                    [loading]="cancelingId() === batch.batchId"
+                    (onClick)="cancelBatch(batch)"
+                  />
+                } @else {
+                  <p-button
+                    icon="pi pi-external-link"
+                    [text]="true"
+                    [rounded]="true"
+                    size="small"
+                    severity="secondary"
+                    pTooltip="Abrir"
+                    tooltipPosition="top"
+                    (onClick)="openBatch(batch.batchId)"
+                  />
+                }
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  </div>
+}
