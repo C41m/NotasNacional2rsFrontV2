@@ -113,7 +113,15 @@ export class ApiService {
   }
 
   downloadBatchFile(batchId: string): void {
-    window.open(`${this.baseUrl}/nfse/batch-download/${batchId}/file`, '_blank');
+    const url = `${this.baseUrl}/nfse/batch-download/${batchId}/file`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '';
+    a.target = '_blank';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   }
 
   // ==================== Documentos Fiscais ====================
