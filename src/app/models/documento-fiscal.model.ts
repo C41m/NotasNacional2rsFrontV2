@@ -11,7 +11,8 @@ export type TipoDocumento =
   | 'folha_pagamento'
   | 'defis'
   | 'dirf'
-  | 'efd_reinf';
+  | 'efd_reinf'
+  | 'nfse';
 
 /** Rótulos exibidos — o backend nunca devolve o texto, só a chave. */
 export const TIPO_DOCUMENTO_LABELS: Record<TipoDocumento, string> = {
@@ -21,7 +22,8 @@ export const TIPO_DOCUMENTO_LABELS: Record<TipoDocumento, string> = {
   folha_pagamento: 'Folha de Pagamento',
   defis: 'DEFIS',
   dirf: 'DIRF',
-  efd_reinf: 'EFD-REINF'
+  efd_reinf: 'EFD-REINF',
+  nfse: 'NFSe',
 };
 
 export const TIPO_DOCUMENTO_OPTIONS = (
@@ -51,6 +53,55 @@ export interface DocumentoFiscal extends DocumentoFiscalResumo {
   observacao?: string | null;
   arquivo_fonte?: string | null;
   data_extracao?: string | null;
+}
+
+/** NfseOut — espelha backend/app/schemas/nfse_detail.py NfseOut (detalhe da nota fiscal). */
+export interface NfseOut {
+  id: number;
+  documento_fiscal_id: number;
+  identificador_nfse?: string | null;
+  numero_nfse?: string | null;
+  versao_leiaute?: string | null;
+  data_emissao?: string | null;
+  competencia?: string | null;
+  municipio_emissor_codigo?: string | null;
+  municipio_emissor_descricao?: string | null;
+  cnpj_prestador?: string | null;
+  cpf_prestador?: string | null;
+  razao_social_prestador?: string | null;
+  inscricao_municipal_prestador?: string | null;
+  cnpj_tomador?: string | null;
+  cpf_tomador?: string | null;
+  razao_social_tomador?: string | null;
+  inscricao_municipal_tomador?: string | null;
+  codigo_servico?: string | null;
+  valor_servico?: number | null;
+  valor_recebido?: number | null;
+  valor_desconto_condicionado?: number | null;
+  valor_desconto_incondicionado?: number | null;
+  valor_liquido?: number | null;
+  base_calculo_iss?: number | null;
+  aliquota_iss?: number | null;
+  valor_iss?: number | null;
+  iss_retido?: string | null;
+  valor_iss_retido?: number | null;
+  valor_retido_cp?: number | null;
+  valor_retido_irrf?: number | null;
+  valor_retido_csll?: number | null;
+  valor_retido_pis?: number | null;
+  valor_retido_cofins?: number | null;
+  chave_acesso?: string | null;
+  chave_nfe_referenciada?: string | null;
+  tipo_evento?: string | null;
+  descricao_evento?: string | null;
+  data_evento?: string | null;
+  nsu?: number | null;
+  tipo_documento_api?: string | null;
+  role?: string | null;
+  xml_original?: string | null;
+  arquivo_fonte?: string | null;
+  criado_em?: string | null;
+  atualizado_em?: string | null;
 }
 
 /** DocumentoFiscalBase — corpo de criação. `empresa_id` e `tipo_documento` obrigatórios. */

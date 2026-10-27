@@ -8,14 +8,27 @@ export interface BatchRequest {
   datainicio?: string | null;
   datafim?: string | null;
   download_type?: DownloadType;
+  force_update?: boolean;
 }
 
 export interface CompanyProgress {
   status: string;
   notas_done: number;
   notas_total: number;
+  notas_salvas: number;
+  valorServico: number;
+  valorIss: number;
+  notasPrestadas: number;
+  notasTomadas: number;
+  notasCanceladas: number;
+  valorPrestado: number;
+  valorTomado: number;
+  valorCancelado: number;
+  carregando_notas: boolean;
   cnpj: string;
   nome: string;
+  empresa_id?: number;
+  mensagem?: string;
 }
 
 export interface BatchStatus {

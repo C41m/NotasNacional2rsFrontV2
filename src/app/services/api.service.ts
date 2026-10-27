@@ -10,6 +10,7 @@ import {
   DocumentoFiscalCreate,
   DocumentoFiscalFiltros,
   DocumentoFiscalResumo,
+  NfseOut,
   PaginatedResponse,
   TipoDocumento
 } from '../models/documento-fiscal.model';
@@ -85,13 +86,7 @@ export class ApiService {
 
   // ==================== NFSe Batch Download ====================
 
-  startBatchDownload(request: {
-    company_ids: number[];
-    /** Não são mais enviados — o ADN retorna o histórico completo. */
-    datainicio?: string | null;
-    datafim?: string | null;
-    download_type?: DownloadType;
-  }): Observable<{ batch_id: string; status: string }> {
+  startBatchDownload(request: BatchRequest): Observable<{ batch_id: string; status: string }> {
     return this.http.post<{ batch_id: string; status: string }>(
       `${this.baseUrl}/nfse/batch-download`,
       request
@@ -112,16 +107,11 @@ export class ApiService {
     );
   }
 
-  downloadBatchFile(batchId: string): void {
-    const url = `${this.baseUrl}/nfse/batch-download/${batchId}/file`;
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = '';
-    a.target = '_blank';
-    a.rel = 'noopener';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  downloadBatchFile(batchId: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/nfse/batch-download/${batchId}/file`, {
+      responseType: 'blob',
+      headers: this.authHeaders()
+    });
   }
 
   // ==================== Documentos Fiscais ====================
@@ -148,6 +138,42 @@ export class ApiService {
       headers: this.authHeaders()
     });
   }
+
+  // ==================== Salvar XMLs NFSe (persistência no banco) ====================
+  // POST /nfse/salvar-xml — recebe XMLs baixados pela ADN e salva dados no banco.
+  salvarXmlsNfse(request: {
+    empresa_id: number;
+    xmls: Array<{
+      nsu?: number | null;
+      tipo_documento_api?: string | null;
+      role?: string | null;
+      chave?: string | null;
+      competencia?: string | null;
+      xml: string;
+    }>;
+  }): Observable<NfseOut[]> {
+    return this.http.post<NfseOut[]>(
+      `${this.baseUrl}/nfse/salvar-xml`,
+      request,
+      { headers: this.authHeaders() }
+    );
+  }
+
+  // ==================== NFSe Relatório XLSX ====================
+
+  downloadNfseRelatorioXlsx(periodo: string, companyIds?: number[]): Observable<Blob> {
+    let params = new HttpParams().set('periodo', periodo);
+    if (companyIds && companyIds.length > 0) {
+      params = params.set('company_ids', companyIds.join(','));
+    }
+    return this.http.get(`${this.baseUrl}/nfse/relatorio/xlsx`, {
+      params,
+      responseType: 'blob',
+      headers: this.authHeaders()
+    });
+  }
+
+  // ==================== Documentos Fiscais - Get/Create/Delete ====================
 
   getDocumentoFiscal(id: string | number): Observable<DocumentoFiscal> {
     return this.http.get<DocumentoFiscal>(`${this.baseUrl}/documentos/${id}`, {
@@ -202,5 +228,10 @@ export class ApiService {
     return this.http.get<Record<string, unknown>[]>(`${this.baseUrl}/auditoria/dashboard/fator-r`, {
       headers: this.authHeaders()
     });
+  }
+
+  downloadAuditoriaXlsx(periodo: string): void {
+    const url = `${this.baseUrl}/auditoria/relatorio/xlsx?periodo=${encodeURIComponent(periodo)}`;
+    window.open(url, '_blank');
   }
 }

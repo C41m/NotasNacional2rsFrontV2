@@ -131,8 +131,9 @@ export class BatchListComponent implements OnInit, OnDestroy {
     });
   }
 
-  openBatch(batchId: string): void {
-    this.router.navigate(['/download', batchId]);
+  openBatch(batchId: string, datainicio?: string, datafim?: string): void {
+    const periodo = datainicio ? `${datainicio.split('/')[2]}-${datainicio.split('/')[1]}` : undefined;
+    this.router.navigate(['/download', batchId], { queryParams: { periodo } });
   }
 
   progressOf(batch: BatchItem): number {

@@ -1,4 +1,5 @@
 // src/app/components/progress/progress.component.ts
+import { CommonModule, DecimalPipe } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
@@ -17,6 +18,8 @@ type BatchState = 'queued' | 'processing' | 'cancelling' | 'cancelled' | 'succes
   selector: 'app-progress',
   standalone: true,
   imports: [
+    CommonModule,
+    DecimalPipe,
     RouterLink,
     ButtonModule,
     TableModule,
@@ -39,6 +42,7 @@ export class ProgressComponent implements OnInit, OnDestroy {
   readonly error = signal('');
   readonly canceling = signal(false);
   readonly polls = signal(0);
+  readonly periodo = signal<string>('');
 
   /** Estados terminais — o polling para quando um deles é atingido. */
   private static readonly TERMINAL: BatchState[] = ['success', 'failed', 'cancelled'];
@@ -61,6 +65,83 @@ export class ProgressComponent implements OnInit, OnDestroy {
     return Object.values(companies).reduce((sum, c) => sum + (c?.notas_done ?? 0), 0);
   });
 
+  readonly totalSalvas = computed(() => {
+    const companies = this.status()?.companies;
+    if (!companies) return 0;
+    return Object.values(companies).reduce((sum, c) => sum + (c?.notas_salvas ?? 0), 0);
+  });
+
+  readonly totalValorServico = computed(() => {
+    const companies = this.status()?.companies;
+    if (!companies) return 0;
+    return Object.values(companies).reduce((sum, c) => sum + (c?.valorServico ?? 0), 0);
+  });
+
+  readonly totalValorIss = computed(() => {
+    const companies = this.status()?.companies;
+    if (!companies) return 0;
+    return Object.values(companies).reduce((sum, c) => sum + (c?.valorIss ?? 0), 0);
+  });
+
+  readonly totalNotasPrestadas = computed(() => {
+    const companies = this.status()?.companies;
+    if (!companies) return 0;
+    return Object.values(companies).reduce((sum, c) => sum + (c?.notasPrestadas ?? 0), 0);
+  });
+
+  readonly totalNotasTomadas = computed(() => {
+    const companies = this.status()?.companies;
+    if (!companies) return 0;
+    return Object.values(companies).reduce((sum, c) => sum + (c?.notasTomadas ?? 0), 0);
+  });
+
+  readonly totalNotasCanceladas = computed(() => {
+    const companies = this.status()?.companies;
+    if (!companies) return 0;
+    return Object.values(companies).reduce((sum, c) => sum + (c?.notasCanceladas ?? 0), 0);
+  });
+
+  readonly totalValorPrestado = computed(() => {
+    const companies = this.status()?.companies;
+    if (!companies) return 0;
+    return Object.values(companies).reduce((sum, c) => sum + (c?.valorPrestado ?? 0), 0);
+  });
+
+  readonly totalValorTomado = computed(() => {
+    const companies = this.status()?.companies;
+    if (!companies) return 0;
+    return Object.values(companies).reduce((sum, c) => sum + (c?.valorTomado ?? 0), 0);
+  });
+
+  readonly totalValorCancelado = computed(() => {
+    const companies = this.status()?.companies;
+    if (!companies) return 0;
+    return Object.values(companies).reduce((sum, c) => sum + (c?.valorCancelado ?? 0), 0);
+  });
+
+  readonly totalEmpresas = computed(() => {
+    const companies = this.status()?.companies;
+    return companies ? Object.keys(companies).length : 0;
+  });
+
+  readonly totalSucesso = computed(() => {
+    const companies = this.status()?.companies;
+    if (!companies) return 0;
+    return Object.values(companies).reduce(
+      (sum, c) => sum + (c?.status === 'success' ? 1 : 0),
+      0
+    );
+  });
+
+  readonly totalErro = computed(() => {
+    const companies = this.status()?.companies;
+    if (!companies) return 0;
+    return Object.values(companies).reduce(
+      (sum, c) => sum + (c?.status === 'failed' ? 1 : 0),
+      0
+    );
+  });
+
   /** Linhas da tabela: uma por empresa. Notas só aparecem quando a empresa termina. */
   readonly rows = computed(() => {
     const companies = this.status()?.companies ?? {};
@@ -69,18 +150,31 @@ export class ProgressComponent implements OnInit, OnDestroy {
       nome: c?.nome ?? '—',
       cnpj: c?.cnpj ?? '',
       notasDone: c?.notas_done ?? 0,
-      state: (c?.status as BatchState) ?? 'queued'
+      notasSalvas: c?.notas_salvas ?? 0,
+      valorServico: c?.valorServico ?? 0,
+      valorIss: c?.valorIss ?? 0,
+      notasPrestadas: c?.notasPrestadas ?? 0,
+      notasTomadas: c?.notasTomadas ?? 0,
+      notasCanceladas: c?.notasCanceladas ?? 0,
+      valorPrestado: c?.valorPrestado ?? 0,
+      valorTomado: c?.valorTomado ?? 0,
+      valorCancelado: c?.valorCancelado ?? 0,
+      carregandoNotas: c?.carregando_notas ?? false,
+      state: (c?.status as BatchState) ?? 'queued',
+      mensagem: c?.mensagem ?? ''
     }));
   });
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('batchId') ?? '';
+    const periodoParam = this.route.snapshot.queryParamMap.get('periodo') ?? '';
     if (!id) {
       this.error.set('Batch ID não encontrado.');
       this.loading.set(false);
       return;
     }
     this.batchId.set(id);
+    this.periodo.set(periodoParam);
     this.startPolling();
   }
 
@@ -89,9 +183,10 @@ export class ProgressComponent implements OnInit, OnDestroy {
   }
 
   private startPolling(): void {
-    // Primeira consulta imediata; depois a cada 10s (o backend devolve cache em memória).
+    // Primeira consulta imediata; depois a cada 3s durante o processamento (feedback rapido)
+    // e a cada 10s quando ja esta em estado terminal.
     this.poll();
-    this.intervalId = setInterval(() => this.poll(), 10_000);
+    this.intervalId = setInterval(() => this.poll(), 3_000);
   }
 
   private stopPolling(): void {
@@ -137,7 +232,40 @@ export class ProgressComponent implements OnInit, OnDestroy {
   }
 
   downloadFile(): void {
-    this.api.downloadBatchFile(this.batchId());
+    this.api.downloadBatchFile(this.batchId()).subscribe({
+      next: blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `nfse_batch_${this.batchId()}.zip`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      },
+      error: () => this.toast.error('Falha ao baixar o ZIP.', 'Erro')
+    });
+  }
+
+  downloadRelatorioXlsx(): void {
+    let periodo = this.periodo();
+    if (!periodo) {
+      // Usa a competência atual (mês/ano atual) como fallback
+      const hoje = new Date();
+      periodo = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+    }
+    const companies = this.status()?.companies;
+    const companyIds = companies ? Object.keys(companies).map(Number) : [];
+    this.api.downloadNfseRelatorioXlsx(periodo, companyIds).subscribe({
+      next: blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `relatorio_nfse_${periodo}.xlsx`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      },
+      error: () => this.toast.error('Falha ao baixar o relatório XLSX.', 'Erro')
+    });
+    this.toast.success('Planilha solicitada', 'O download deve iniciar automaticamente.');
   }
 
   goBack(): void {

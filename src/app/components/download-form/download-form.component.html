@@ -56,6 +56,39 @@
     </small>
   </div>
 
+  <!-- Período -->
+  <div class="field">
+    <span class="field-label">
+      <i class="pi pi-calendar"></i> Período Inicial
+    </span>
+    <input
+      type="date"
+      name="dataInicial"
+      [ngModel]="dataInicial()"
+      (ngModelChange)="dataInicial.set($event)"
+      class="p-inputtext w-full"
+    />
+    <small class="field-hint" style="margin-top: 0.375rem">
+      Data de início do período de consulta das notas fiscais.
+    </small>
+  </div>
+
+  <div class="field">
+    <span class="field-label">
+      <i class="pi pi-calendar"></i> Período Final
+    </span>
+    <input
+      type="date"
+      name="dataFinal"
+      [ngModel]="dataFinal()"
+      (ngModelChange)="dataFinal.set($event)"
+      class="p-inputtext w-full"
+    />
+    <small class="field-hint" style="margin-top: 0.375rem">
+      Deve ser maior ou igual ao período inicial.
+    </small>
+  </div>
+
   <div class="callout callout-info" style="margin-top: 0.5rem">
     <i class="pi pi-info-circle"></i>
     <div>
@@ -65,6 +98,18 @@
   </div>
 
   <div class="divider"></div>
+
+  <!-- <div class="field" style="margin-bottom: 0.5rem">
+    <p-checkbox
+      name="forceUpdate"
+      [(ngModel)]="forceUpdate"
+      inputId="forceUpdate"
+      binary="true"
+    />
+    <label for="forceUpdate" class="ml-2 cursor-pointer text-sm">
+      <strong>Atualizar notas já baixadas</strong> — Re-extrai valores do XML armazenado (corrige base cálculo, alíquota, ISS zerados). Não baixa novamente da ADN.
+    </label>
+  </div> -->
 
   <div class="row-between">
     <p-button

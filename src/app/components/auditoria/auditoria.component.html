@@ -49,6 +49,19 @@
         (onClick)="navegar(1)"
       />
     </div>
+
+    <p-button
+      icon="pi pi-file-excel"
+      label="Exportar XLSX"
+      severity="success"
+      size="small"
+      [outlined]="true"
+      pTooltip="Baixar planilha (RESUMO + DETALHAMENTO)"
+      tooltipPosition="top"
+      [disabled]="loading() || kpis().total_empresas === 0"
+      (onClick)="downloadXlsx()"
+      class="ml-2"
+    />
   </div>
 </div>
 

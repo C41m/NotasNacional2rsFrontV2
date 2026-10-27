@@ -334,6 +334,12 @@ export class AuditoriaComponent implements OnInit {
     window.print();
   }
 
+  /** Download do relatório em XLSX (duas abas: RESUMO + DETALHAMENTO). */
+  downloadXlsx(): void {
+    this.api.downloadAuditoriaXlsx(this.periodo());
+    this.toast.success('Planilha gerada', 'O download deve iniciar automaticamente.');
+  }
+
   /** Rótulo do tipo de documento da pendência — o banco é varchar livre. */
   tipoDocLabel(tipo: string | null | undefined): string {
     if (!tipo) return '—';

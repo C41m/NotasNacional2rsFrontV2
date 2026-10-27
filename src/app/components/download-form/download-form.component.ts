@@ -6,6 +6,7 @@ import { ButtonModule } from 'primeng/button';
 import { SelectButtonModule } from 'primeng/selectbutton';
 import { MessageModule } from 'primeng/message';
 import { TooltipModule } from 'primeng/tooltip';
+import { CheckboxModule } from 'primeng/checkbox';
 import { ApiService } from '../../services/api.service';
 import { ToastService } from '../../services/toast.service';
 import { DownloadType } from '../../models/download.model';
@@ -27,7 +28,8 @@ interface DownloadTypeOption {
     ButtonModule,
     SelectButtonModule,
     MessageModule,
-    TooltipModule
+    TooltipModule,
+    CheckboxModule
   ],
   templateUrl: './download-form.component.html'
 })
@@ -38,6 +40,9 @@ export class DownloadFormComponent implements OnInit {
 
   readonly companyIds = signal<number[]>([]);
   readonly downloadType = signal<DownloadType>('xml');
+  readonly dataInicial = signal<string>('');
+  readonly dataFinal = signal<string>('');
+  readonly forceUpdate = signal(false);
   readonly loading = signal(false);
 
   readonly typeOptions: DownloadTypeOption[] = [
@@ -47,6 +52,20 @@ export class DownloadFormComponent implements OnInit {
   ];
 
   readonly canSubmit = computed(() => this.companyIds().length > 0 && !this.loading());
+
+  private periodoValido(): boolean {
+    const ini = this.dataInicial();
+    const fim = this.dataFinal();
+    if (!ini || !fim) return true; // opcional
+    return fim >= ini;
+  }
+
+  private ddMmAaaa(iso: string): string | null {
+    if (!iso) return null;
+    const partes = iso.split("-");
+    if (partes.length !== 3) return null;
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+  }
 
   ngOnInit(): void {
     const stored = localStorage.getItem('selectedCompanyIds');
@@ -76,11 +95,19 @@ export class DownloadFormComponent implements OnInit {
       return;
     }
 
+    if (!this.periodoValido()) {
+      this.toast.error('O período final deve ser maior ou igual ao período inicial.', 'Período inválido');
+      return;
+    }
+
     this.loading.set(true);
     this.api
       .startBatchDownload({
         company_ids: ids,
-        download_type: this.downloadType()
+        datainicio: this.ddMmAaaa(this.dataInicial()),
+        datafim: this.ddMmAaaa(this.dataFinal()),
+        download_type: this.downloadType(),
+        force_update: this.forceUpdate()
       })
       .subscribe({
         next: response => {
