@@ -101,6 +101,42 @@ export class ProgressComponent implements OnInit, OnDestroy {
     return Object.values(companies).reduce((sum, c) => sum + (c?.notasCanceladas ?? 0), 0);
   });
 
+  readonly totalNotasOutros = computed(() => {
+    const companies = this.status()?.companies;
+    if (!companies) return 0;
+    return Object.values(companies).reduce((sum, c) => sum + (c?.notasOutros ?? 0), 0);
+  });
+
+  readonly totalValorPrestadoComRetencao = computed(() => {
+    const companies = this.status()?.companies;
+    if (!companies) return 0;
+    return Object.values(companies).reduce((sum, c) => sum + (c?.valorPrestadoComRetencao ?? 0), 0);
+  });
+
+  readonly totalValorPrestadoSemRetencao = computed(() => {
+    const companies = this.status()?.companies;
+    if (!companies) return 0;
+    return Object.values(companies).reduce((sum, c) => sum + (c?.valorPrestadoSemRetencao ?? 0), 0);
+  });
+
+  readonly totalNotasPrestadasComRetencao = computed(() => {
+    const companies = this.status()?.companies;
+    if (!companies) return 0;
+    return Object.values(companies).reduce((sum, c) => sum + (c?.notasPrestadasComRetencao ?? 0), 0);
+  });
+
+  readonly totalNotasPrestadasSemRetencao = computed(() => {
+    const companies = this.status()?.companies;
+    if (!companies) return 0;
+    return Object.values(companies).reduce((sum, c) => sum + (c?.notasPrestadasSemRetencao ?? 0), 0);
+  });
+
+  readonly totalValorOutros = computed(() => {
+    const companies = this.status()?.companies;
+    if (!companies) return 0;
+    return Object.values(companies).reduce((sum, c) => sum + (c?.valorOutros ?? 0), 0);
+  });
+
   readonly totalValorPrestado = computed(() => {
     const companies = this.status()?.companies;
     if (!companies) return 0;
@@ -156,6 +192,7 @@ export class ProgressComponent implements OnInit, OnDestroy {
       notasPrestadas: c?.notasPrestadas ?? 0,
       notasTomadas: c?.notasTomadas ?? 0,
       notasCanceladas: c?.notasCanceladas ?? 0,
+      notasOutros: c?.notasOutros ?? 0,
       valorPrestado: c?.valorPrestado ?? 0,
       valorTomado: c?.valorTomado ?? 0,
       valorCancelado: c?.valorCancelado ?? 0,

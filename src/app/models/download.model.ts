@@ -21,9 +21,15 @@ export interface CompanyProgress {
   notasPrestadas: number;
   notasTomadas: number;
   notasCanceladas: number;
+  notasOutros: number;
   valorPrestado: number;
   valorTomado: number;
   valorCancelado: number;
+  valorOutros: number;
+  notasPrestadasComRetencao: number;
+  notasPrestadasSemRetencao: number;
+  valorPrestadoComRetencao: number;
+  valorPrestadoSemRetencao: number;
   carregando_notas: boolean;
   cnpj: string;
   nome: string;

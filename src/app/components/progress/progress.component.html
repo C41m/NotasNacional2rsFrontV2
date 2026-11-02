@@ -65,6 +65,7 @@
   }
 
   <!-- Cards de resumo essenciais (sempre visíveis) -->
+  <div class="section-title" style="margin-top: 0">Geral</div>
   <div class="stat-grid">
     <div class="stat-card">
       <div class="stat-card-icon tone-primary"><i class="pi pi-building"></i></div>
@@ -106,7 +107,8 @@
           <div class="card-title">Auditoria do lote</div>
         </div>
         <div class="card-body">
-          <!-- Resumo com totais de valor -->
+          <!-- Geral -->
+          <div class="section-title" style="margin-top: 0">Geral</div>
           <div class="stat-grid" style="margin-bottom: 1rem">
             <div class="stat-card">
               <div class="stat-card-icon tone-info"><i class="pi pi-file"></i></div>
@@ -123,24 +125,10 @@
               </div>
             </div>
             <div class="stat-card">
-              <div class="stat-card-icon tone-success"><i class="pi pi-euro-sign"></i></div>
+              <div class="stat-card-icon tone-info"><i class="pi pi-percent"></i></div>
               <div class="stat-card-body">
-                <span class="stat-card-label">Valor Prestados</span>
-                <span class="stat-card-value text-success">{{ totalValorPrestado() | number:'1.2-2' }}</span>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-card-icon tone-info"><i class="pi pi-euro-sign"></i></div>
-              <div class="stat-card-body">
-                <span class="stat-card-label">Valor Tomados</span>
-                <span class="stat-card-value text-info">{{ totalValorTomado() | number:'1.2-2' }}</span>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-card-icon tone-danger"><i class="pi pi-euro-sign"></i></div>
-              <div class="stat-card-body">
-                <span class="stat-card-label">Valor Cancelados</span>
-                <span class="stat-card-value text-danger">{{ totalValorCancelado() | number:'1.2-2' }}</span>
+                <span class="stat-card-label">Valor ISS</span>
+                <span class="stat-card-value text-primary">{{ totalValorIss() | number:'1.2-2' }}</span>
               </div>
             </div>
             <div class="stat-card">
@@ -157,11 +145,17 @@
                 <span class="stat-card-value text-danger">{{ totalErro() }}</span>
               </div>
             </div>
+          </div>
+
+          <!-- Por tipo -->
+          <div class="section-title">Por tipo</div>
+          <div class="stat-grid" style="margin-bottom: 1rem">
             <div class="stat-card">
               <div class="stat-card-icon tone-success"><i class="pi pi-arrow-circle-up"></i></div>
               <div class="stat-card-body">
                 <span class="stat-card-label">Prestados</span>
                 <span class="stat-card-value text-success">{{ totalNotasPrestadas() }}</span>
+                <span class="stat-card-hint mono">R$ {{ totalValorPrestado() | number:'1.2-2' }}</span>
               </div>
             </div>
             <div class="stat-card">
@@ -169,6 +163,7 @@
               <div class="stat-card-body">
                 <span class="stat-card-label">Tomados</span>
                 <span class="stat-card-value text-info">{{ totalNotasTomadas() }}</span>
+                <span class="stat-card-hint mono">R$ {{ totalValorTomado() | number:'1.2-2' }}</span>
               </div>
             </div>
             <div class="stat-card">
@@ -176,20 +171,36 @@
               <div class="stat-card-body">
                 <span class="stat-card-label">Cancelados</span>
                 <span class="stat-card-value text-danger">{{ totalNotasCanceladas() }}</span>
+                <span class="stat-card-hint mono">R$ {{ totalValorCancelado() | number:'1.2-2' }}</span>
               </div>
             </div>
             <div class="stat-card">
-              <div class="stat-card-icon tone-info"><i class="pi pi-euro-sign"></i></div>
+              <div class="stat-card-icon tone-info"><i class="pi pi-question-circle"></i></div>
               <div class="stat-card-body">
-                <span class="stat-card-label">Valor Servico</span>
-                <span class="stat-card-value text-primary">{{ totalValorServico() | number:'1.2-2' }}</span>
+                <span class="stat-card-label">Outros</span>
+                <span class="stat-card-value text-primary">{{ totalNotasOutros() }}</span>
+                <span class="stat-card-hint mono">R$ {{ totalValorOutros() | number:'1.2-2' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Prestados — retenção de ISS -->
+          <div class="section-title">Prestados — retenção de ISS</div>
+          <div class="stat-grid" style="margin-bottom: 1rem">
+            <div class="stat-card">
+              <div class="stat-card-icon tone-success"><i class="pi pi-lock"></i></div>
+              <div class="stat-card-body">
+                <span class="stat-card-label">Prestados com retenção</span>
+                <span class="stat-card-value text-success">{{ totalNotasPrestadasComRetencao() }}</span>
+                <span class="stat-card-hint mono">R$ {{ totalValorPrestadoComRetencao() | number:'1.2-2' }}</span>
               </div>
             </div>
             <div class="stat-card">
-              <div class="stat-card-icon tone-info"><i class="pi pi-percent"></i></div>
+              <div class="stat-card-icon tone-success"><i class="pi pi-unlock"></i></div>
               <div class="stat-card-body">
-                <span class="stat-card-label">Valor ISS</span>
-                <span class="stat-card-value text-primary">{{ totalValorIss() | number:'1.2-2' }}</span>
+                <span class="stat-card-label">Prestados sem retenção</span>
+                <span class="stat-card-value text-success">{{ totalNotasPrestadasSemRetencao() }}</span>
+                <span class="stat-card-hint mono">R$ {{ totalValorPrestadoSemRetencao() | number:'1.2-2' }}</span>
               </div>
             </div>
           </div>
@@ -296,7 +307,6 @@
               } @else if (row.state !== 'success' && row.state !== 'failed' && row.state !== 'cancelled') {
                 <div class="inline-flex gap-2 items-center text-muted">
                   <i class="pi pi-spin pi-spinner"></i>
-                  <span>Aguardando...</span>
                 </div>
               } @else {
                 <span class="table-code">{{ row.notasDone }}</span>
