@@ -77,9 +77,13 @@ export class CompanyListComponent implements OnInit {
       next: data => {
         this.companies.set(data);
         // Descarta seleções que não existem mais na resposta.
-        const valid = new Set(this.selectableIds());
-        const next = new Set([...this.selectedIds()].filter(id => valid.has(id)));
-        this.selectedIds.set(next);
+        // Só poda quando a lista não está filtrada por busca, senão
+        // empresas selecionadas fora do filtro seriam "apagadas".
+        if (this.search() === '') {
+          const valid = new Set(this.selectableIds());
+          const next = new Set([...this.selectedIds()].filter(id => valid.has(id)));
+          this.selectedIds.set(next);
+        }
         this.loading.set(false);
       },
       error: () => {
@@ -153,7 +157,13 @@ export class CompanyListComponent implements OnInit {
   }
 
   toggleSelectAll(checked: boolean): void {
-    this.selectedIds.set(checked ? new Set(this.selectableIds()) : new Set());
+    const next = new Set(this.selectedIds());
+    if (checked) {
+      for (const id of this.selectableIds()) next.add(id);
+    } else {
+      for (const id of this.selectableIds()) next.delete(id);
+    }
+    this.selectedIds.set(next);
   }
 
   clearSelection(): void {
