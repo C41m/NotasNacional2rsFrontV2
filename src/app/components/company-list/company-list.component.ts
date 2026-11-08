@@ -43,6 +43,7 @@ export class CompanyListComponent implements OnInit {
   readonly companies = signal<Company[]>([]);
   readonly loading = signal(false);
   readonly search = signal('');
+  readonly certFilter = signal<'all' | 'valid' | 'expiring' | 'expired'>('all');
 
   private searchDebounce: ReturnType<typeof setTimeout> | null = null;
 
@@ -50,10 +51,24 @@ export class CompanyListComponent implements OnInit {
   readonly totalCompanies = computed(() => this.companies().length);
   readonly certCount = computed(() => this.companies().filter(c => this.isCertValid(c)).length);
   readonly noCertCount = computed(() => this.companies().filter(c => !this.isCertValid(c)).length);
+  readonly expiringSoonCount = computed(() => this.companies().filter(c => this.isCertExpiringSoon(c.validade_cert)).length);
+
+  readonly filteredCompanies = computed(() => {
+    const f = this.certFilter();
+    if (f === 'all') return this.companies();
+    if (f === 'valid') return this.companies().filter(c => this.isCertValid(c) && !this.isCertExpiringSoon(c.validade_cert));
+    if (f === 'expiring') return this.companies().filter(c => this.isCertExpiringSoon(c.validade_cert));
+    return this.companies().filter(c => this.isCertExpired(c.validade_cert));
+  });
+
+  readonly hasActiveFilter = computed(() => this.search().trim() !== '' || this.certFilter() !== 'all');
 
   // ── Seleção (para download em lote) ──────────────────────────────
   readonly selectedIds = signal<Set<number>>(new Set());
   readonly selectedCount = computed(() => this.selectedIds().size);
+  readonly selectionLabel = computed(() =>
+    this.selectedCount() === 1 ? '1 selecionada' : `${this.selectedCount()} selecionadas`
+  );
 
   /** Total de empresas elegíveis para download (certificado válido). */
   readonly selectableTotal = computed(
@@ -105,6 +120,16 @@ export class CompanyListComponent implements OnInit {
     this.loadCompanies();
   }
 
+  clearFilters(): void {
+    if (this.searchDebounce) {
+      clearTimeout(this.searchDebounce);
+      this.searchDebounce = null;
+    }
+    this.search.set('');
+    this.certFilter.set('all');
+    this.loadCompanies();
+  }
+
   // ── Certificado ─────────────────────────────────────────────────
   isCertValid(company: Company): boolean {
     return !this.isCertExpired(company.validade_cert);
@@ -149,6 +174,19 @@ export class CompanyListComponent implements OnInit {
     if (checked) next.add(company.id);
     else next.delete(company.id);
     this.selectedIds.set(next);
+  }
+
+  onRowClick(company: Company, event: MouseEvent): void {
+    if (!this.isCertValid(company)) return;
+    const target = event.target as HTMLElement | null;
+    if (
+      target?.closest(
+        'button, a, input, select, textarea, p-checkbox, .p-button, .table-actions'
+      )
+    ) {
+      return;
+    }
+    this.toggleSelection(company, !this.isSelected(company.id));
   }
 
   allSelectableSelected(): boolean {
@@ -211,7 +249,12 @@ export class CompanyListComponent implements OnInit {
       this.toast.warn('Selecione pelo menos uma empresa.', 'Seleção vazia');
       return;
     }
+    const selected = this.companies().filter(c => ids.includes(c.id));
     localStorage.setItem('selectedCompanyIds', JSON.stringify(ids));
+    localStorage.setItem(
+      'selectedCompanies',
+      JSON.stringify(selected.map(c => ({ id: c.id, nome: c.nome, cnpj: c.cnpj })))
+    );
     this.router.navigate(['/download']);
   }
 

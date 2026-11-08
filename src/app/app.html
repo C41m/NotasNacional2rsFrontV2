@@ -22,9 +22,7 @@
           (onClick)="ui.toggleSidebar()"
         />
         <div class="topbar-breadcrumb">
-          <span class="text-muted">2RS Notas</span>
           @if (breadcrumbVisible()) {
-            <i class="pi pi-angle-right text-muted" style="font-size: 0.7rem"></i>
             <span class="text-primary">{{ pageTitle() }}</span>
           }
         </div>
@@ -41,7 +39,6 @@
           ariaLabel="Alternar tema"
           (onClick)="toggleTheme()"
         />
-        <div class="topbar-logo" style="cursor: default">2R</div>
       </div>
     </header>
 

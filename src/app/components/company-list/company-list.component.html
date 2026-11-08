@@ -1,7 +1,7 @@
 <div class="page-header">
   <div>
     <h1 class="page-title">Empresas</h1>
-    <p class="page-subtitle">Gerencie cadastros e initiate downloads de NFSe</p>
+    <p class="page-subtitle">Gerencie cadastros e inicie downloads de NFSe</p>
   </div>
   <p-button
     label="Nova Empresa"
@@ -10,44 +10,25 @@
   />
 </div>
 
-<!-- Estatísticas -->
-<div class="stat-grid">
-  <div class="stat-card">
-    <div class="stat-card-icon tone-primary"><i class="pi pi-building"></i></div>
-    <div class="stat-card-body">
-      <span class="stat-card-label">Total de Empresas</span>
-      <span class="stat-card-value">{{ totalCompanies() }}</span>
-    </div>
-  </div>
-
-  <div class="stat-card">
-    <div class="stat-card-icon tone-success"><i class="pi pi-verified"></i></div>
-    <div class="stat-card-body">
-      <span class="stat-card-label">Com Certificado</span>
-      <span class="stat-card-value text-success">{{ certCount() }}</span>
-    </div>
-  </div>
-
-  <div class="stat-card">
-    <div class="stat-card-icon tone-danger"><i class="pi pi-exclamation-triangle"></i></div>
-    <div class="stat-card-body">
-      <span class="stat-card-label">Sem Certificado</span>
-      <span class="stat-card-value text-danger">{{ noCertCount() }}</span>
-    </div>
-  </div>
+<!-- Estatísticas: faixa fina -->
+<div
+  class="stats-strip"
+  aria-label="Resumo de empresas"
+  [attr.aria-busy]="loading()"
+>
+  <span class="stats-strip-item"><span class="stats-strip-value">@if (loading()) { <p-skeleton width="2rem" height="1rem" /> } @else { {{ totalCompanies() }} }</span> <span class="stats-strip-label">empresas</span></span>
+  <span class="stats-strip-sep" aria-hidden="true">·</span>
+  <span class="stats-strip-item"><span class="stats-strip-value text-success">@if (loading()) { <p-skeleton width="2rem" height="1rem" /> } @else { {{ certCount() }} }</span> <span class="stats-strip-label">certificado válido</span></span>
+  <span class="stats-strip-sep" aria-hidden="true">·</span>
+  <span class="stats-strip-item"><span class="stats-strip-value text-warn">@if (loading()) { <p-skeleton width="2rem" height="1rem" /> } @else { {{ expiringSoonCount() }} }</span> <span class="stats-strip-label">vencendo (30d)</span></span>
+  <span class="stats-strip-sep" aria-hidden="true">·</span>
+  <span class="stats-strip-item"><span class="stats-strip-value text-danger">@if (loading()) { <p-skeleton width="2rem" height="1rem" /> } @else { {{ noCertCount() }} }</span> <span class="stats-strip-label">vencido/ausente</span></span>
 </div>
 
 <!-- Tabela -->
 <div class="section">
-  <div class="section-title">
-    <span>Cadastro</span>
-    <span class="text-muted" style="text-transform: none; letter-spacing: 0">
-      {{ companies().length }} registro(s)
-    </span>
-  </div>
-
   <div class="row-between" style="margin-bottom: 1.25rem">
-    <p-iconfield style="width: min(24rem, 100%)">
+    <p-iconfield class="toolbar-search">
       <p-inputicon styleClass="pi pi-search" />
       <input
         pInputText
@@ -56,23 +37,42 @@
         [ngModel]="search()"
         (ngModelChange)="onSearchInput($event)"
         style="width: 100%"
+        aria-label="Buscar por nome ou CNPJ"
       />
     </p-iconfield>
 
-    <div class="inline-gap">
-      @if (selectedCount() > 0) {
-        <span class="text-primary" style="font-size: 0.8rem">
-          {{ selectedCount() }} selecionada(s)
-        </span>
-        <p-button
-          label="Limpar"
-          icon="pi pi-times"
-          severity="secondary"
-          [text]="true"
-          size="small"
-          (onClick)="clearSelection()"
-        />
-      }
+    <div class="inline-gap toolbar-actions">
+      <div class="seg-group" role="group" aria-label="Filtro de certificado">
+        <button
+          type="button"
+          class="seg-btn"
+          [class.active]="certFilter() === 'all'"
+          (click)="certFilter.set('all')"
+          [attr.aria-pressed]="certFilter() === 'all'"
+        >Todas</button>
+        <button
+          type="button"
+          class="seg-btn"
+          [class.active]="certFilter() === 'valid'"
+          (click)="certFilter.set('valid')"
+          [attr.aria-pressed]="certFilter() === 'valid'"
+        >Válidas</button>
+        <button
+          type="button"
+          class="seg-btn"
+          [class.active]="certFilter() === 'expiring'"
+          (click)="certFilter.set('expiring')"
+          [attr.aria-pressed]="certFilter() === 'expiring'"
+        >Vencendo</button>
+        <button
+          type="button"
+          class="seg-btn"
+          [class.active]="certFilter() === 'expired'"
+          (click)="certFilter.set('expired')"
+          [attr.aria-pressed]="certFilter() === 'expired'"
+        >Vencidas</button>
+      </div>
+
       <p-button
         [label]="allSelectableSelected() ? 'Desmarcar' : 'Selecionar todas'"
         severity="secondary"
@@ -81,22 +81,21 @@
         [disabled]="selectableTotal() === 0"
         (onClick)="toggleSelectAll(!allSelectableSelected())"
       />
-      <p-button
-        label="Baixar NFSe"
-        icon="pi pi-download"
-        size="small"
-        [disabled]="selectedCount() === 0"
-        (onClick)="startDownload()"
-      />
     </div>
   </div>
 
   <div class="table-wrap">
     <p-table
-      [value]="companies()"
+      [value]="filteredCompanies()"
       dataKey="id"
       [loading]="loading()"
       [rowHover]="true"
+      [paginator]="true"
+      [rows]="10"
+      [rowsPerPageOptions]="[10, 25, 50, 100]"
+      [showCurrentPageReport]="true"
+      currentPageReportTemplate="Mostrando {first}–{last} de {totalRecords} registros"
+      paginatorDropdownAppendTo="body"
       [tableStyle]="{ 'min-width': '52rem' }"
     >
       <ng-template #header>
@@ -111,7 +110,11 @@
       </ng-template>
 
       <ng-template #body let-company>
-        <tr>
+        <tr
+          [class.selectable]="isCertValid(company)"
+          [class.selected]="isSelected(company.id)"
+          (click)="onRowClick(company, $event)"
+        >
           <td>
             <p-checkbox
               [binary]="true"
@@ -164,6 +167,7 @@
                 severity="secondary"
                 pTooltip="Editar"
                 tooltipPosition="top"
+                ariaLabel="Editar empresa"
                 (onClick)="editCompany(company.id)"
               />
               <p-button
@@ -174,6 +178,7 @@
                 severity="danger"
                 pTooltip="Excluir"
                 tooltipPosition="top"
+                ariaLabel="Excluir empresa"
                 (onClick)="confirmDelete(company)"
               />
             </div>
@@ -187,9 +192,15 @@
             @if (!loading()) {
               <div class="empty-state">
                 <i class="pi pi-building"></i>
-                <h3>Nenhuma empresa cadastrada</h3>
-                <p>Cadastre sua primeira empresa para começar a gerenciar suas NFSe.</p>
-                <p-button label="Cadastrar Empresa" icon="pi pi-plus" (onClick)="createCompany()" />
+                @if (hasActiveFilter()) {
+                  <h3>Nenhuma empresa encontrada</h3>
+                  <p>Nenhuma empresa corresponde à busca ou ao filtro de certificado.</p>
+                  <p-button label="Limpar busca e filtro" icon="pi pi-times" (onClick)="clearFilters()" />
+                } @else {
+                  <h3>Nenhuma empresa cadastrada</h3>
+                  <p>Cadastre sua primeira empresa para começar a gerenciar suas NFSe.</p>
+                  <p-button label="Cadastrar Empresa" icon="pi pi-plus" (onClick)="createCompany()" />
+                }
               </div>
             } @else {
               <div style="display: flex; flex-direction: column; gap: 0.75rem; padding: 0.5rem">
@@ -203,4 +214,27 @@
       </ng-template>
     </p-table>
   </div>
+
+  <!-- Barra fixa de seleção (só quando há seleção) -->
+  @if (selectedCount() > 0) {
+    <div class="selection-bar" role="region" aria-label="Seleção de empresas">
+      <span class="selection-bar-count"><strong>{{ selectionLabel() }}</strong></span>
+      <div class="selection-bar-actions">
+        <p-button
+          label="Limpar"
+          icon="pi pi-times"
+          severity="secondary"
+          [text]="true"
+          size="small"
+          (onClick)="clearSelection()"
+        />
+        <p-button
+          label="Baixar NFSe"
+          icon="pi pi-download"
+          size="small"
+          (onClick)="startDownload()"
+        />
+      </div>
+    </div>
+  }
 </div>

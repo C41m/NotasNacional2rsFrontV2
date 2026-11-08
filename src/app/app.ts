@@ -32,10 +32,10 @@ export class App implements OnInit {
 
   private readonly routeLabels: Record<string, string> = {
     '/companies': 'Empresas',
-    '/companies/new': 'Nova Empresa',
+    '/companies/new': 'Empresas / Nova Empresa',
     '/auditoria': 'Auditoria',
     '/documentos-fiscais': 'Documentos Fiscais',
-    '/download': 'Download NFSe',
+    '/download': 'Empresas / Download NFSe',
     '/batches': 'Downloads Ativos'
   };
 
@@ -54,8 +54,8 @@ export class App implements OnInit {
 
   /** Rótulos para rotas com parâmetro (ex.: /companies/12/edit, /download/<id>). */
   private resolveDynamicLabel(url: string): string {
-    if (url.startsWith('/companies/') && url.endsWith('/edit')) return 'Editar Empresa';
-    if (url.startsWith('/download/')) return 'Acompanhamento';
+    if (url.startsWith('/companies/') && url.endsWith('/edit')) return 'Empresas / Editar Empresa';
+    if (url.startsWith('/download/')) return 'Downloads Ativos / Acompanhamento';
     return this.routeLabels['/companies'];
   }
 

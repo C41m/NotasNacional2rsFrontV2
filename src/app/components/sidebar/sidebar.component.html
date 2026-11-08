@@ -1,27 +1,51 @@
 <div class="sidebar-inner">
   <div class="sidebar-brand">
-    <div class="topbar-logo">2RS</div>
     <div class="sidebar-brand-text">2RS <span>Notas</span></div>
   </div>
 
-  <nav class="sidebar-nav">
-    @for (item of items; track item.path) {
-      <a
-        class="sidebar-link"
-        [routerLink]="item.path"
-        routerLinkActive="active"
-        [routerLinkActiveOptions]="{ exact: item.path === '/companies' }"
-        (click)="navigate.emit()"
-      >
-        <i [class]="item.icon"></i>
-        <span>{{ item.label }}</span>
-      </a>
+  <nav class="sidebar-nav" aria-label="Navegação principal">
+    @for (group of groups; track group.label) {
+      <div class="sidebar-group">
+        <button
+          type="button"
+          class="sidebar-group-toggle"
+          [attr.aria-expanded]="isGroupOpen(group.label)"
+          [attr.aria-controls]="'group-' + group.label"
+          (click)="toggleGroup(group.label)"
+        >
+          <span>{{ group.label }}</span>
+          <i class="pi pi-chevron-down sidebar-group-chevron" aria-hidden="true"></i>
+        </button>
+        <div
+          class="sidebar-group-panel"
+          [id]="'group-' + group.label"
+          [class.open]="isGroupOpen(group.label)"
+          [attr.aria-hidden]="!isGroupOpen(group.label)"
+        >
+          <div class="sidebar-group-links">
+            @for (item of group.items; track item.path) {
+              <a
+                class="sidebar-link"
+                [routerLink]="item.path"
+                routerLinkActive="active"
+                [routerLinkActiveOptions]="{ exact: item.path === '/companies' }"
+                ariaCurrentWhenActive="page"
+                [tabindex]="isGroupOpen(group.label) ? 0 : -1"
+                (click)="navigate.emit()"
+              >
+                <i [class]="item.icon"></i>
+                <span>{{ item.label }}</span>
+              </a>
+            }
+          </div>
+        </div>
+      </div>
     }
   </nav>
 
   <div class="sidebar-footer">
     <span class="text-muted" style="font-size: 0.72rem; padding: 0 0.75rem">
-      {{ items.length }} módulos
+      Ambiente: {{ envLabel }}
     </span>
   </div>
 </div>

@@ -3,20 +3,15 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
-import { SelectButtonModule } from 'primeng/selectbutton';
-import { MessageModule } from 'primeng/message';
-import { TooltipModule } from 'primeng/tooltip';
-import { CheckboxModule } from 'primeng/checkbox';
+import { DatePickerModule } from 'primeng/datepicker';
 import { ApiService } from '../../services/api.service';
 import { ToastService } from '../../services/toast.service';
-import { DownloadType } from '../../models/download.model';
+import { formatCnpj } from '../../shared/format';
 
-interface DownloadTypeOption {
-  label: string;
-  value: DownloadType;
-  icon: string;
-  disabled?: boolean;
-  tooltip?: string;
+interface SelectedCompanySummary {
+  id: number;
+  nome: string;
+  cnpj: string;
 }
 
 @Component({
@@ -26,10 +21,7 @@ interface DownloadTypeOption {
     FormsModule,
     RouterLink,
     ButtonModule,
-    SelectButtonModule,
-    MessageModule,
-    TooltipModule,
-    CheckboxModule
+    DatePickerModule
   ],
   templateUrl: './download-form.component.html'
 })
@@ -39,53 +31,110 @@ export class DownloadFormComponent implements OnInit {
   private readonly toast = inject(ToastService);
 
   readonly companyIds = signal<number[]>([]);
-  readonly downloadType = signal<DownloadType>('xml');
-  readonly dataInicial = signal<string>('');
-  readonly dataFinal = signal<string>('');
-  readonly forceUpdate = signal(false);
+  readonly selectedCompanies = signal<SelectedCompanySummary[]>([]);
+  readonly competenciaInicial = signal('');
+  readonly competenciaFinal = signal('');
+  readonly competenciaInicialDate = computed(() => this.parseCompetencia(this.competenciaInicial()));
+  readonly competenciaFinalDate = computed(() => this.parseCompetencia(this.competenciaFinal()));
   readonly loading = signal(false);
 
-  readonly typeOptions: DownloadTypeOption[] = [
-    { label: 'XML', value: 'xml', icon: 'pi pi-code' },
-    { label: 'PDF', value: 'pdf', icon: 'pi pi-file-pdf', disabled: true, tooltip: 'Em desenvolvimento' },
-    { label: 'Ambos', value: 'both', icon: 'pi pi-clone', disabled: true, tooltip: 'Em desenvolvimento' }
-  ];
+  readonly selectionLabel = computed(() =>
+    this.companyIds().length === 1 ? '1 empresa selecionada' : `${this.companyIds().length} empresas selecionadas`
+  );
 
-  readonly canSubmit = computed(() => this.companyIds().length > 0 && !this.loading());
+  readonly periodoInvalido = computed(
+    () =>
+      !!this.competenciaInicial() &&
+      !!this.competenciaFinal() &&
+      this.competenciaFinal() < this.competenciaInicial()
+  );
 
-  private periodoValido(): boolean {
-    const ini = this.dataInicial();
-    const fim = this.dataFinal();
-    if (!ini || !fim) return true; // opcional
-    return fim >= ini;
+  readonly canSubmit = computed(
+    () => this.companyIds().length > 0 && !this.loading() && !this.periodoInvalido()
+  );
+
+  readonly resumoPeriodo = computed(() => {
+    const ini = this.competenciaInicial();
+    const fim = this.competenciaFinal();
+    if (!ini && !fim) return 'Histórico completo';
+    if (ini && fim) return `Competência ${this.formatCompetencia(ini)} → ${this.formatCompetencia(fim)}`;
+    if (ini) return `A partir de ${this.formatCompetencia(ini)}`;
+    return `Até ${this.formatCompetencia(fim)}`;
+  });
+
+  readonly resumoLote = computed(
+    () => `${this.selectionLabel()} • XML • ${this.resumoPeriodo()}`
+  );
+
+  readonly formatCnpj = formatCnpj;
+
+  private mesParaDdMmAaaa(competencia: string): string | null {
+    if (!competencia) return null;
+    const partes = competencia.split('-');
+    if (partes.length !== 2) return null;
+    return `01/${partes[1]}/${partes[0]}`;
   }
 
-  private ddMmAaaa(iso: string): string | null {
-    if (!iso) return null;
-    const partes = iso.split("-");
-    if (partes.length !== 3) return null;
-    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+  private parseCompetencia(competencia: string): Date | null {
+    if (!competencia) return null;
+    const [ano, mes] = competencia.split('-').map(Number);
+    if (!ano || !mes) return null;
+    return new Date(ano, mes - 1, 1);
+  }
+
+  private dateParaCompetencia(date: Date | null): string {
+    if (!date || Number.isNaN(date.getTime())) return '';
+    const ano = date.getFullYear();
+    const mes = String(date.getMonth() + 1).padStart(2, '0');
+    return `${ano}-${mes}`;
+  }
+
+  onCompetenciaInicialChange(date: Date | null): void {
+    this.competenciaInicial.set(this.dateParaCompetencia(date));
+  }
+
+  onCompetenciaFinalChange(date: Date | null): void {
+    this.competenciaFinal.set(this.dateParaCompetencia(date));
+  }
+
+  formatCompetencia(competencia: string): string {
+    if (!competencia) return '';
+    const partes = competencia.split('-');
+    if (partes.length !== 2) return competencia;
+    return `${partes[1]}/${partes[0]}`;
   }
 
   ngOnInit(): void {
-    const stored = localStorage.getItem('selectedCompanyIds');
-    if (stored) {
+    const storedCompanies = localStorage.getItem('selectedCompanies');
+    const storedIds = localStorage.getItem('selectedCompanyIds');
+
+    if (storedCompanies) {
       try {
-        this.companyIds.set(JSON.parse(stored) as number[]);
+        const parsed = JSON.parse(storedCompanies) as SelectedCompanySummary[];
+        this.selectedCompanies.set(parsed);
+        this.companyIds.set(parsed.map(c => c.id));
       } catch {
+        this.selectedCompanies.set([]);
         this.companyIds.set([]);
       }
-      localStorage.removeItem('selectedCompanyIds');
+    } else if (storedIds) {
+      try {
+        const ids = JSON.parse(storedIds) as number[];
+        this.companyIds.set(ids);
+        this.selectedCompanies.set(ids.map(id => ({ id, nome: '', cnpj: '' })));
+      } catch {
+        this.companyIds.set([]);
+        this.selectedCompanies.set([]);
+      }
     }
+
+    localStorage.removeItem('selectedCompanyIds');
+    localStorage.removeItem('selectedCompanies');
 
     if (this.companyIds().length === 0) {
       this.toast.warn('Nenhuma empresa selecionada.', 'Seleção vazia');
       this.router.navigate(['/companies']);
     }
-  }
-
-  onTypeChange(value: DownloadType): void {
-    this.downloadType.set(value);
   }
 
   submit(): void {
@@ -95,26 +144,29 @@ export class DownloadFormComponent implements OnInit {
       return;
     }
 
-    if (!this.periodoValido()) {
-      this.toast.error('O período final deve ser maior ou igual ao período inicial.', 'Período inválido');
+    if (this.periodoInvalido()) {
+      this.toast.error('A competência final deve ser posterior ou igual à inicial.', 'Período inválido');
       return;
     }
 
     this.loading.set(true);
-    const datainicio = this.ddMmAaaa(this.dataInicial());
-    const periodo = datainicio ? `${datainicio.split('/')[2]}-${datainicio.split('/')[1]}` : undefined;
+    const competenciaInicial = this.competenciaInicial();
+    const datainicio = this.mesParaDdMmAaaa(competenciaInicial);
+    const datafim = this.mesParaDdMmAaaa(this.competenciaFinal());
     this.api
       .startBatchDownload({
         company_ids: ids,
         datainicio,
-        datafim: this.ddMmAaaa(this.dataFinal()),
-        download_type: this.downloadType(),
-        force_update: this.forceUpdate()
+        datafim,
+        download_type: 'xml',
+        force_update: false
       })
       .subscribe({
         next: response => {
           this.loading.set(false);
-          this.router.navigate(['/download', response.batch_id], { queryParams: periodo ? { periodo } : {} });
+          this.router.navigate(['/download', response.batch_id], {
+            queryParams: competenciaInicial ? { periodo: competenciaInicial } : {}
+          });
         },
         error: () => this.loading.set(false)
       });

@@ -1,129 +1,124 @@
 <div class="page-header">
   <div>
     <h1 class="page-title">Download NFSe</h1>
-    <p class="page-subtitle">Baixe todas as notas fiscais das empresas selecionadas</p>
+    <p class="page-subtitle">Configure o lote a partir das empresas selecionadas</p>
   </div>
-  <p-button
-    label="Alterar seleção"
-    icon="pi pi-arrow-left"
-    severity="secondary"
-    [outlined]="true"
-    routerLink="/companies"
-  />
 </div>
 
-<p-message severity="info" style="display: block; margin-bottom: 1.5rem">
-  <span class="text-sm">
-    <strong>{{ companyIds().length }}</strong>
-    empresa(s) selecionada(s) — o download usará o certificado digital de cada uma.
-  </span>
-</p-message>
-
 <form class="section" style="max-width: 46rem" (ngSubmit)="submit()">
+  <div class="download-selection">
+    <div class="download-selection-head">
+      <i class="pi pi-building"></i>
+      <strong>{{ selectionLabel() }}</strong>
+      <span class="text-muted">— certificado digital de cada empresa</span>
+    </div>
+    <details class="download-selection-details">
+      <summary>Ver empresas</summary>
+      <ul class="download-selection-list">
+        @for (company of selectedCompanies().slice(0, 8); track company.id) {
+          <li>
+            <span class="table-name">{{ company.nome || ('Empresa #' + company.id) }}</span>
+            @if (company.cnpj) {
+              <span class="table-code">{{ formatCnpj(company.cnpj) }}</span>
+            }
+          </li>
+        }
+      </ul>
+      @if (selectedCompanies().length > 8) {
+        <small class="field-hint">+{{ selectedCompanies().length - 8 }} outras empresas</small>
+      }
+    </details>
+  </div>
+
   <!-- Tipo de download -->
   <div class="field">
     <span class="field-label">
       <i class="pi pi-save"></i> Tipo de Download
     </span>
-    <p-selectbutton
-      name="downloadType"
-      [options]="typeOptions"
-      [ngModel]="downloadType()"
-      (ngModelChange)="onTypeChange($event)"
-      optionLabel="label"
-      optionValue="value"
-      [allowEmpty]="false"
-      inputStyleClass="w-full"
-    >
-      <ng-template #item let-option>
-        <span
-          class="inline-gap"
-          style="gap: 0.375rem"
-          [class.opacity-50]="option.disabled"
-          [pTooltip]="option.disabled ? option.tooltip : null"
-          tooltipPosition="top"
-        >
-          <i [class]="option.icon"></i>
-          {{ option.label }}
-          @if (option.disabled) {
-            <i class="pi pi-lock text-xs text-warn"></i>
-          }
-        </span>
-      </ng-template>
-    </p-selectbutton>
-    <small class="field-hint" style="margin-top: 0.375rem">
-      PDF e XML+PDF: em desenvolvimento. Baixando XML é possível gerar o PDF no portal da NFS-e.
-    </small>
-  </div>
-
-  <!-- Período -->
-  <div class="field">
-    <span class="field-label">
-      <i class="pi pi-calendar"></i> Período Inicial
+    <span class="download-type-chip">
+      <i class="pi pi-code"></i> XML
+      <span class="download-type-badge">PDF em breve</span>
     </span>
-    <input
-      type="date"
-      name="dataInicial"
-      [ngModel]="dataInicial()"
-      (ngModelChange)="dataInicial.set($event)"
-      class="p-inputtext w-full"
-    />
-    <small class="field-hint" style="margin-top: 0.375rem">
-      Data de início do período de consulta das notas fiscais.
-    </small>
   </div>
 
-  <div class="field">
-    <span class="field-label">
-      <i class="pi pi-calendar"></i> Período Final
-    </span>
-    <input
-      type="date"
-      name="dataFinal"
-      [ngModel]="dataFinal()"
-      (ngModelChange)="dataFinal.set($event)"
-      class="p-inputtext w-full"
-    />
-    <small class="field-hint" style="margin-top: 0.375rem">
-      Deve ser maior ou igual ao período inicial.
-    </small>
-  </div>
+  <!-- Período por competência -->
+  <div class="form-grid-2 download-period-grid">
+    <div class="field">
+      <label class="field-label" for="competenciaInicial">
+        <i class="pi pi-calendar"></i> Competência inicial
+      </label>
+      <p-datepicker
+        inputId="competenciaInicial"
+        name="competenciaInicial"
+        [ngModel]="competenciaInicialDate()"
+        (ngModelChange)="onCompetenciaInicialChange($event)"
+        view="month"
+        selectionMode="single"
+        dateFormat="mm/yy"
+        [showIcon]="true"
+        iconDisplay="input"
+        [appendTo]="'body'"
+        placeholder="mm/aaaa"
+        inputStyleClass="w-full"
+        ariaLabel="Competência inicial"
+        iconAriaLabel="Abrir seletor de competência inicial"
+        [attr.aria-describedby]="periodoInvalido() ? 'periodoError' : null"
+      />
+    </div>
 
-  <div class="callout callout-info" style="margin-top: 0.5rem">
-    <i class="pi pi-info-circle"></i>
-    <div>
-      <strong>Todas as notas disponíveis</strong>
-      <span>O ADN retorna o histórico completo da empresa. O ZIP será organizado por tipo, papel e competência.</span>
+    <div class="field">
+      <label class="field-label" for="competenciaFinal">
+        <i class="pi pi-calendar"></i> Competência final
+      </label>
+      <p-datepicker
+        inputId="competenciaFinal"
+        name="competenciaFinal"
+        [ngModel]="competenciaFinalDate()"
+        (ngModelChange)="onCompetenciaFinalChange($event)"
+        view="month"
+        selectionMode="single"
+        dateFormat="mm/yy"
+        [showIcon]="true"
+        iconDisplay="input"
+        [appendTo]="'body'"
+        placeholder="mm/aaaa"
+        inputStyleClass="w-full"
+        ariaLabel="Competência final"
+        iconAriaLabel="Abrir seletor de competência final"
+        [attr.aria-describedby]="periodoInvalido() ? 'periodoError' : null"
+      />
     </div>
   </div>
 
+  @if (periodoInvalido()) {
+    <p class="field-error" id="periodoError" role="alert" style="margin-top: -0.5rem">
+      A competência final deve ser posterior ou igual à inicial.
+    </p>
+  }
+
   <div class="divider"></div>
 
-  <!-- <div class="field" style="margin-bottom: 0.5rem">
-    <p-checkbox
-      name="forceUpdate"
-      [(ngModel)]="forceUpdate"
-      inputId="forceUpdate"
-      binary="true"
-    />
-    <label for="forceUpdate" class="ml-2 cursor-pointer text-sm">
-      <strong>Atualizar notas já baixadas</strong> — Re-extrai valores do XML armazenado (corrige base cálculo, alíquota, ISS zerados). Não baixa novamente da ADN.
-    </label>
-  </div> -->
-
-  <div class="row-between">
-    <p-button
-      label="Voltar para empresas"
-      icon="pi pi-arrow-left"
-      severity="secondary"
-      [text]="true"
-      routerLink="/companies"
-    />
-    <p-button
-      [label]="loading() ? 'Iniciando...' : 'Baixar NFSe'"
-      [icon]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-download'"
-      type="submit"
-      [disabled]="!canSubmit()"
-    />
+  <div class="row-between download-actions">
+    <div class="download-actions-copy">
+      <span class="download-actions-summary">{{ resumoLote() }}</span>
+      @if (periodoInvalido()) {
+        <small class="field-error">Corrija o período para continuar.</small>
+      }
+    </div>
+    <div class="inline-gap">
+      <p-button
+        label="Voltar para empresas"
+        icon="pi pi-arrow-left"
+        severity="secondary"
+        [text]="true"
+        routerLink="/companies"
+      />
+      <p-button
+        [label]="loading() ? 'Iniciando...' : 'Baixar NFSe'"
+        [icon]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-download'"
+        type="submit"
+        [disabled]="!canSubmit()"
+      />
+    </div>
   </div>
 </form>

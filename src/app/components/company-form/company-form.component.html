@@ -3,13 +3,6 @@
     <h1 class="page-title">{{ title() }}</h1>
     <p class="page-subtitle">{{ subtitle() }}</p>
   </div>
-  <p-button
-    label="Voltar"
-    icon="pi pi-arrow-left"
-    severity="secondary"
-    [outlined]="true"
-    routerLink="/companies"
-  />
 </div>
 
 <form class="section" style="max-width: 46rem" (ngSubmit)="submit()">
@@ -87,9 +80,9 @@
 
     <!-- Certificado atual (edição) -->
     @if (isEdit() && currentCertDate()) {
-      <p-message severity="success" style="display: block; margin-bottom: 1.25rem">
+      <p-message [severity]="certStatusSeverity()" style="display: block; margin-bottom: 1.25rem">
         <span class="text-sm">
-          Certificado vigente — validade
+          {{ certStatusLabel() }} — validade
           <strong class="mono">{{ currentCertDate() | date: 'dd/MM/yyyy' }}</strong
           >. Envie um novo arquivo apenas se quiser substituí-lo.
         </span>
@@ -118,6 +111,9 @@
       <small class="field-hint">
         Arquivo do certificado digital A1 (.pfx), até 5 MB. Usado para autenticar na prefeitura.
       </small>
+      @if (submitted() && certRequired() && !pfxBase64()) {
+        <small class="field-error">Selecione o arquivo PFX do certificado.</small>
+      }
       @if (selectedFileName()) {
         <div class="inline-gap" style="margin-top: 0.5rem">
           <i class="pi pi-file text-primary"></i>
@@ -144,10 +140,13 @@
         [inputStyle]="{ width: '100%' }"
       />
       <small class="field-hint">
-        Na edição: deixe em branco para manter a senha atual.
+        {{ isEdit() ? 'Na edição: deixe em branco para manter a senha atual.' : 'Usada para abrir o arquivo PFX.' }}
       </small>
       @if (submitted() && certRequired() && !password()) {
         <small class="field-error">Informe a senha do certificado.</small>
+      }
+      @if (submitted() && certPairInvalid()) {
+        <small class="field-error">{{ certPairError() }}</small>
       }
     </div>
 

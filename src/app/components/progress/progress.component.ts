@@ -1,5 +1,5 @@
 // src/app/components/progress/progress.component.ts
-import { CommonModule, DecimalPipe } from '@angular/common';
+import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
@@ -11,6 +11,7 @@ import { TooltipModule } from 'primeng/tooltip';
 import { ApiService } from '../../services/api.service';
 import { ToastService } from '../../services/toast.service';
 import { BatchStatus, CompanyProgress } from '../../models/download.model';
+import { formatCnpj } from '../../shared/format';
 
 type BatchState = 'queued' | 'processing' | 'cancelling' | 'cancelled' | 'success' | 'failed';
 
@@ -19,6 +20,7 @@ type BatchState = 'queued' | 'processing' | 'cancelling' | 'cancelled' | 'succes
   standalone: true,
   imports: [
     CommonModule,
+    DatePipe,
     DecimalPipe,
     RouterLink,
     ButtonModule,
@@ -42,6 +44,7 @@ export class ProgressComponent implements OnInit, OnDestroy {
   readonly error = signal('');
   readonly canceling = signal(false);
   readonly polls = signal(0);
+  readonly lastUpdated = signal<Date | null>(null);
   readonly periodo = signal<string>('');
 
   /** Estados terminais — o polling para quando um deles é atingido. */
@@ -51,7 +54,36 @@ export class ProgressComponent implements OnInit, OnDestroy {
 
   readonly state = computed<BatchState>(() => (this.status()?.status as BatchState) ?? 'queued');
   readonly isTerminal = computed(() => ProgressComponent.TERMINAL.includes(this.state()));
-  readonly isRunning = computed(() => this.state() === 'processing');
+  readonly isRunning = computed(() => this.state() === 'processing' || this.state() === 'queued');
+  readonly isActive = computed(
+    () => this.state() === 'queued' || this.state() === 'processing' || this.state() === 'cancelling'
+  );
+
+  readonly shortBatchId = computed(() => this.batchId().slice(0, 8));
+
+  readonly batchTypeLabel = computed(() => (this.status()?.download_type || 'xml').toUpperCase());
+
+  readonly batchPeriodLabel = computed(() => {
+    const s = this.status();
+    if (s?.datainicio || s?.datafim) {
+      const ini = s?.datainicio ?? '';
+      const fim = s?.datafim ?? '';
+      if (ini && fim) return `${ini} → ${fim}`;
+      return ini || fim;
+    }
+    if (this.periodo()) return this.formatPeriodoParam(this.periodo());
+    return 'Histórico completo';
+  });
+
+  readonly successSummary = computed(() => {
+    const empresas = this.status()?.total ?? 0;
+    const notas = this.totalNotas();
+    const salvas = this.totalSalvas();
+    const empresaLabel = empresas === 1 ? 'empresa concluída' : 'empresas concluídas';
+    const notaLabel = notas === 1 ? 'nota baixada' : 'notas baixadas';
+    const salvaLabel = salvas === 1 ? 'salva' : 'salvas';
+    return `${empresas} ${empresaLabel} • ${notas} ${notaLabel} • ${salvas} ${salvaLabel} no banco nesta execução`;
+  });
 
   readonly overallPct = computed(() => {
     const s = this.status();
@@ -186,6 +218,7 @@ export class ProgressComponent implements OnInit, OnDestroy {
       nome: c?.nome ?? '—',
       cnpj: c?.cnpj ?? '',
       notasDone: c?.notas_done ?? 0,
+      notasTotal: c?.notas_total ?? 0,
       notasSalvas: c?.notas_salvas ?? 0,
       valorServico: c?.valorServico ?? 0,
       valorIss: c?.valorIss ?? 0,
@@ -239,6 +272,7 @@ export class ProgressComponent implements OnInit, OnDestroy {
         this.status.set(status);
         this.loading.set(false);
         this.polls.update(n => n + 1);
+        this.lastUpdated.set(new Date());
         if (ProgressComponent.TERMINAL.includes(status.status as BatchState)) {
           this.stopPolling();
         }
@@ -340,4 +374,17 @@ export class ProgressComponent implements OnInit, OnDestroy {
     };
     return map[state] ?? 'secondary';
   }
+
+  rowProgress(row: { notasDone: number; notasTotal: number; state: BatchState }): number {
+    if (row.notasTotal > 0) return Math.min(100, Math.round((row.notasDone / row.notasTotal) * 100));
+    return row.state === 'success' ? 100 : 0;
+  }
+
+  formatPeriodoParam(periodo: string): string {
+    const partes = periodo.split('-');
+    if (partes.length !== 2) return periodo;
+    return `${partes[1]}/${partes[0]}`;
+  }
+
+  readonly formatCnpj = formatCnpj;
 }

@@ -3,25 +3,31 @@
     <h1 class="page-title">Acompanhamento de Download</h1>
     <p class="page-subtitle">
       Progresso em tempo real
-      @if (polls() > 0) {
-        <span class="text-muted"> · {{ polls() }} atualização(ões)</span>
+      @if (lastUpdated()) {
+        <span class="text-muted"> · atualizado às {{ lastUpdated() | date:'HH:mm:ss' }}</span>
       }
     </p>
+    <div class="batch-context" aria-label="Contexto do lote">
+      <span class="batch-chip">Batch {{ shortBatchId() }}…</span>
+      <span class="batch-chip">{{ batchPeriodLabel() }}</span>
+      <span class="batch-chip">{{ batchTypeLabel() }}</span>
+      <span class="batch-chip">{{ stateLabel(state()) }}</span>
+    </div>
   </div>
   <p-button
     label="Voltar"
     icon="pi pi-arrow-left"
     severity="secondary"
     [outlined]="true"
-    routerLink="/companies"
+    routerLink="/batches"
   />
 </div>
 
-@if (isRunning()) {
+@if (isActive()) {
   <div class="callout callout-info">
     <i class="pi pi-sync"></i>
     <div>
-      <strong>Processamento em andamento</strong>
+      <strong>Download em andamento</strong>
       <span>O download continua em segundo plano. Você pode sair desta página sem interromper.</span>
     </div>
   </div>
@@ -64,30 +70,15 @@
     </div>
   }
 
-  <!-- Cards de resumo essenciais (sempre visíveis) -->
-  <div class="section-title" style="margin-top: 0">Geral</div>
-  <div class="stat-grid">
-    <div class="stat-card">
-      <div class="stat-card-icon tone-primary"><i class="pi pi-building"></i></div>
-      <div class="stat-card-body">
-        <span class="stat-card-label">Empresas</span>
-        <span class="stat-card-value">{{ s.total }}</span>
-      </div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-card-icon tone-success"><i class="pi pi-check-circle"></i></div>
-      <div class="stat-card-body">
-        <span class="stat-card-label">Concluídas</span>
-        <span class="stat-card-value text-success">{{ s.done }}</span>
-      </div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-card-icon tone-warn"><i class="pi pi-hourglass"></i></div>
-      <div class="stat-card-body">
-        <span class="stat-card-label">Pendentes</span>
-        <span class="stat-card-value text-warn">{{ s.total - s.done }}</span>
-      </div>
-    </div>
+  <!-- Resumo compacto do lote -->
+  <div class="stats-strip" aria-label="Resumo do lote">
+    <span class="stats-strip-item"><span class="stats-strip-value">{{ s.done }}/{{ s.total }}</span> <span class="stats-strip-label">empresas</span></span>
+    <span class="stats-strip-sep" aria-hidden="true">·</span>
+    <span class="stats-strip-item"><span class="stats-strip-value">{{ totalNotas() }}</span> <span class="stats-strip-label">notas baixadas</span></span>
+    <span class="stats-strip-sep" aria-hidden="true">·</span>
+    <span class="stats-strip-item"><span class="stats-strip-value">{{ totalSalvas() }}</span> <span class="stats-strip-label">salvas no banco</span></span>
+    <span class="stats-strip-sep" aria-hidden="true">·</span>
+    <span class="stats-strip-item"><span class="stats-strip-value" [class.text-danger]="totalErro() > 0" [class.text-muted]="totalErro() === 0">{{ totalErro() }}</span> <span class="stats-strip-label">erros</span></span>
   </div>
 
   <!-- Estado final: sucesso -->
@@ -96,121 +87,62 @@
       <i class="pi pi-check-circle"></i>
       <div>
         <strong>Download concluído!</strong>
-        <span>{{ s.total }} empresa(s) e {{ totalNotas() }} nota(s) processadas com sucesso ({{ totalSalvas() }} salvas no banco).</span>
+        <span>{{ successSummary() }}</span>
       </div>
     </div>
 
-    <!-- Auditoria do lote (detalhada) -->
-    <div class="section" style="margin-top: 1.5rem">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">Auditoria do lote</div>
-        </div>
-        <div class="card-body">
-          <!-- Geral -->
-          <div class="section-title" style="margin-top: 0">Geral</div>
-          <div class="stat-grid" style="margin-bottom: 1rem">
-            <div class="stat-card">
-              <div class="stat-card-icon tone-info"><i class="pi pi-file"></i></div>
-              <div class="stat-card-body">
-                <span class="stat-card-label">Notas Baixadas</span>
-                <span class="stat-card-value">{{ totalNotas() }}</span>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-card-icon tone-success"><i class="pi pi-save"></i></div>
-              <div class="stat-card-body">
-                <span class="stat-card-label">Notas Salvas</span>
-                <span class="stat-card-value text-success">{{ totalSalvas() }}</span>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-card-icon tone-info"><i class="pi pi-percent"></i></div>
-              <div class="stat-card-body">
-                <span class="stat-card-label">Valor ISS</span>
-                <span class="stat-card-value text-primary">{{ totalValorIss() | number:'1.2-2' }}</span>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-card-icon tone-success"><i class="pi pi-check-circle"></i></div>
-              <div class="stat-card-body">
-                <span class="stat-card-label">Sucesso</span>
-                <span class="stat-card-value text-success">{{ totalSucesso() }}</span>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-card-icon tone-danger"><i class="pi pi-times-circle"></i></div>
-              <div class="stat-card-body">
-                <span class="stat-card-label">Erro</span>
-                <span class="stat-card-value text-danger">{{ totalErro() }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Por tipo -->
-          <div class="section-title">Por tipo</div>
-          <div class="stat-grid" style="margin-bottom: 1rem">
-            <div class="stat-card">
-              <div class="stat-card-icon tone-success"><i class="pi pi-arrow-circle-up"></i></div>
-              <div class="stat-card-body">
-                <span class="stat-card-label">Prestados</span>
-                <span class="stat-card-value text-success">{{ totalNotasPrestadas() }}</span>
-                <span class="stat-card-hint mono">R$ {{ totalValorPrestado() | number:'1.2-2' }}</span>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-card-icon tone-info"><i class="pi pi-arrow-circle-down"></i></div>
-              <div class="stat-card-body">
-                <span class="stat-card-label">Tomados</span>
-                <span class="stat-card-value text-info">{{ totalNotasTomadas() }}</span>
-                <span class="stat-card-hint mono">R$ {{ totalValorTomado() | number:'1.2-2' }}</span>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-card-icon tone-danger"><i class="pi pi-times-circle"></i></div>
-              <div class="stat-card-body">
-                <span class="stat-card-label">Cancelados</span>
-                <span class="stat-card-value text-danger">{{ totalNotasCanceladas() }}</span>
-                <span class="stat-card-hint mono">R$ {{ totalValorCancelado() | number:'1.2-2' }}</span>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-card-icon tone-info"><i class="pi pi-question-circle"></i></div>
-              <div class="stat-card-body">
-                <span class="stat-card-label">Outros</span>
-                <span class="stat-card-value text-primary">{{ totalNotasOutros() }}</span>
-                <span class="stat-card-hint mono">R$ {{ totalValorOutros() | number:'1.2-2' }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Prestados — retenção de ISS -->
-          <div class="section-title">Prestados — retenção de ISS</div>
-          <div class="stat-grid" style="margin-bottom: 1rem">
-            <div class="stat-card">
-              <div class="stat-card-icon tone-success"><i class="pi pi-lock"></i></div>
-              <div class="stat-card-body">
-                <span class="stat-card-label">Prestados com retenção</span>
-                <span class="stat-card-value text-success">{{ totalNotasPrestadasComRetencao() }}</span>
-                <span class="stat-card-hint mono">R$ {{ totalValorPrestadoComRetencao() | number:'1.2-2' }}</span>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-card-icon tone-success"><i class="pi pi-unlock"></i></div>
-              <div class="stat-card-body">
-                <span class="stat-card-label">Prestados sem retenção</span>
-                <span class="stat-card-value text-success">{{ totalNotasPrestadasSemRetencao() }}</span>
-                <span class="stat-card-hint mono">R$ {{ totalValorPrestadoSemRetencao() | number:'1.2-2' }}</span>
-              </div>
-            </div>
-          </div>
-          <small class="text-muted" style="display: block; margin-top: 0.5rem">
-            O detalhado por nota fiscal (chave, competencia, prestador, tomador, valores) esta no arquivo
-            <strong>RELATORIO_AUDITORIA.PDF</strong> dentro do ZIP baixado.
-          </small>
-        </div>
+    <!-- Auditoria do lote (colapsável) -->
+    <details class="section audit-details" style="margin-top: 1.5rem">
+      <summary>Auditoria do lote</summary>
+      <div class="table-wrap audit-table-wrap">
+        <table class="audit-table">
+          <thead>
+            <tr>
+              <th>Bloco</th>
+              <th style="text-align: center">Notas</th>
+              <th style="text-align: right">Valor</th>
+              <th>Detalhe</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Geral</td>
+              <td style="text-align: center">{{ totalNotas() }}</td>
+              <td style="text-align: right">R$ {{ totalValorIss() | number:'1.2-2' }}</td>
+              <td>{{ totalSalvas() }} salvas • {{ totalSucesso() }} sucesso(s) • {{ totalErro() }} erro(s)</td>
+            </tr>
+            <tr>
+              <td>Prestados</td>
+              <td style="text-align: center" [class.text-muted]="totalNotasPrestadas() === 0">{{ totalNotasPrestadas() }}</td>
+              <td style="text-align: right" [class.text-muted]="totalValorPrestado() === 0">R$ {{ totalValorPrestado() | number:'1.2-2' }}</td>
+              <td>{{ totalNotasPrestadasComRetencao() }} com retenção • {{ totalNotasPrestadasSemRetencao() }} sem retenção</td>
+            </tr>
+            <tr>
+              <td>Tomados</td>
+              <td style="text-align: center" [class.text-muted]="totalNotasTomadas() === 0">{{ totalNotasTomadas() }}</td>
+              <td style="text-align: right" [class.text-muted]="totalValorTomado() === 0">R$ {{ totalValorTomado() | number:'1.2-2' }}</td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td>Cancelados</td>
+              <td style="text-align: center" [class.text-muted]="totalNotasCanceladas() === 0">{{ totalNotasCanceladas() }}</td>
+              <td style="text-align: right" [class.text-muted]="totalValorCancelado() === 0">R$ {{ totalValorCancelado() | number:'1.2-2' }}</td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td>Outros</td>
+              <td style="text-align: center" [class.text-muted]="totalNotasOutros() === 0">{{ totalNotasOutros() }}</td>
+              <td style="text-align: right" [class.text-muted]="totalValorOutros() === 0">R$ {{ totalValorOutros() | number:'1.2-2' }}</td>
+              <td>—</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-    </div>
+      <small class="text-muted" style="display: block; margin-top: 0.5rem">
+        O detalhado por nota fiscal (chave, competência, prestador, tomador, valores) está no arquivo
+        <strong>RELATORIO_AUDITORIA.PDF</strong> dentro do ZIP baixado. Se <strong>Notas Salvas</strong> for 0, os XMLs permanecem apenas no ZIP.
+      </small>
+    </details>
   }
 
   <!-- Estado final: erro -->
@@ -243,13 +175,110 @@
     </div>
   }
 
-  <!-- Acoes finais: disponiveis em qualquer estado terminal -->
+  <!-- Progresso por empresa -->
+  <div class="section">
+    <div class="section-title">Progresso por Empresa</div>
+
+    <div class="table-wrap">
+      <p-table
+        [value]="rows()"
+        dataKey="id"
+        [tableStyle]="{ 'min-width': '56rem' }"
+      >
+        <ng-template #header>
+          <tr>
+            <th style="width: 18rem">Empresa</th>
+            <th style="width: 12rem; text-align: center">CNPJ</th>
+            <th style="width: 8rem; text-align: center">Notas</th>
+            <th style="width: 8rem; text-align: center">Salvas</th>
+            <th style="width: 14rem; text-align: center">Progresso</th>
+            <th style="width: 11rem; text-align: center">Status</th>
+            <th style="width: 16rem; text-align: left">Detalhe</th>
+          </tr>
+        </ng-template>
+
+        <ng-template #body let-row>
+          <tr>
+            <td><span class="table-name" [title]="row.nome">{{ row.nome }}</span></td>
+            <td style="text-align: center">
+              <span class="table-code">{{ formatCnpj(row.cnpj) }}</span>
+            </td>
+            <td style="text-align: center">
+              <span class="table-code">{{ row.notasDone }}</span>
+            </td>
+            <td style="text-align: center">
+              <span class="table-code" [class.text-muted]="row.notasSalvas === 0">{{ row.notasSalvas }}</span>
+            </td>
+            <td style="text-align: center">
+              <div class="progress-cell">
+                <div class="meter progress-meter" aria-hidden="true">
+                  <div class="meter-track">
+                    <div
+                      class="meter-fill"
+                      [class.done]="rowProgress(row) === 100"
+                      [style.width.%]="rowProgress(row)"
+                    ></div>
+                  </div>
+                  <span class="meter-value">{{ rowProgress(row) }}%</span>
+                </div>
+                @if (row.carregandoNotas || (row.state !== 'success' && row.state !== 'failed' && row.state !== 'cancelled')) {
+                  <i class="pi pi-spin pi-spinner text-muted" aria-label="Processando"></i>
+                }
+              </div>
+            </td>
+            <td style="text-align: center">
+              <p-tag
+                [value]="stateLabel(row.state)"
+                [severity]="stateSeverity(row.state)"
+                [rounded]="true"
+              />
+            </td>
+            <td style="text-align: left">
+              @if (row.mensagem) {
+                <span class="text-muted text-sm">{{ row.mensagem }}</span>
+              } @else {
+                <span class="text-muted text-sm">—</span>
+              }
+            </td>
+          </tr>
+        </ng-template>
+
+        <ng-template #emptymessage>
+          <tr>
+            <td colspan="7">
+              <div class="empty-state">
+                <i class="pi pi-inbox"></i>
+                <h3>Nenhuma empresa no lote</h3>
+                <p>Volte à lista de empresas e refaça a seleção.</p>
+                <p-button label="Ir para Downloads Ativos" routerLink="/batches" />
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+
+    @if (isRunning()) {
+      <div style="display: flex; justify-content: center; margin-top: 1.5rem">
+        <p-button
+          [label]="canceling() ? 'Cancelando...' : 'Cancelar Download'"
+          [icon]="canceling() ? 'pi pi-spin pi-spinner' : 'pi pi-times'"
+          severity="danger"
+          [outlined]="true"
+          [disabled]="canceling()"
+          (onClick)="cancel()"
+        />
+      </div>
+    }
+  </div>
+
+  <!-- Ações finais após a tabela: o usuário termina conferindo as empresas -->
   @if (isTerminal() && totalEmpresas() > 0) {
-    <div class="callout callout-info" style="align-items: center">
+    <div class="callout callout-info progress-actions" style="align-items: center">
       <i class="pi pi-download"></i>
       <div>
         <strong>Baixar arquivos do lote</strong>
-        <span>O ZIP contém os XMLs das notas fiscais.</span>
+        <span>ZIP com os XMLs e o PDF de auditoria. XLSX com resumo e detalhamento por nota.</span>
       </div>
       <div class="inline-gap push-right">
         <p-button
@@ -272,89 +301,4 @@
       </div>
     </div>
   }
-
-  <!-- Progresso por empresa -->
-  <div class="section">
-    <div class="section-title">Progresso por Empresa</div>
-
-    <div class="table-wrap">
-      <p-table
-        [value]="rows()"
-        dataKey="id"
-        [tableStyle]="{ 'min-width': '44rem' }"
-      >
-        <ng-template #header>
-          <tr>
-            <th>Empresa</th>
-            <th style="width: 12rem; text-align: center">CNPJ</th>
-            <th style="width: 9rem; text-align: center">Notas</th>
-            <th style="width: 14rem; text-align: center">Status</th>
-            <th style="width: 20rem; text-align: left">Detalhe</th>
-          </tr>
-        </ng-template>
-
-        <ng-template #body let-row>
-          <tr>
-            <td><span class="table-name">{{ row.nome }}</span></td>
-            <td style="text-align: center">
-              <span class="table-code">{{ row.cnpj }}</span>
-            </td>
-            <td style="text-align: center">
-              @if (row.carregandoNotas) {
-                <div class="inline-flex gap-2 items-center text-muted">
-                  <i class="pi pi-spin pi-spinner"></i>
-                </div>
-              } @else if (row.state !== 'success' && row.state !== 'failed' && row.state !== 'cancelled') {
-                <div class="inline-flex gap-2 items-center text-muted">
-                  <i class="pi pi-spin pi-spinner"></i>
-                </div>
-              } @else {
-                <span class="table-code">{{ row.notasDone }}</span>
-              }
-            </td>
-            <td style="text-align: center">
-              <p-tag
-                [value]="stateLabel(row.state)"
-                [severity]="stateSeverity(row.state)"
-                [rounded]="true"
-              />
-            </td>
-            <td style="text-align: left">
-              @if (row.mensagem) {
-                <span class="text-muted text-sm">{{ row.mensagem }}</span>
-              } @else {
-                <span class="text-muted text-sm">—</span>
-              }
-            </td>
-          </tr>
-        </ng-template>
-
-        <ng-template #emptymessage>
-          <tr>
-            <td colspan="5">
-              <div class="empty-state">
-                <i class="pi pi-inbox"></i>
-                <h3>Nenhuma empresa no lote</h3>
-                <p>Volte à lista de empresas e refaça a seleção.</p>
-                <p-button label="Ir para Empresas" routerLink="/companies" />
-              </div>
-            </td>
-          </tr>
-        </ng-template>
-      </p-table>
-    </div>
-
-    @if (isRunning()) {
-      <div style="display: flex; justify-content: center; margin-top: 1.5rem">
-        <p-button
-          [label]="canceling() ? 'Cancelando...' : 'Cancelar Download'"
-          [icon]="canceling() ? 'pi pi-spin pi-spinner' : 'pi pi-times'"
-          severity="danger"
-          [outlined]="true"
-          [disabled]="canceling()"
-          (onClick)="cancel()"
-        />
-      </div>
-    }
-  </div>
 }

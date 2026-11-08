@@ -14,7 +14,7 @@ import { TooltipModule } from 'primeng/tooltip';
 import { ApiService } from '../../services/api.service';
 import { ToastService } from '../../services/toast.service';
 import { Company, CompanyCreate, CompanyUpdate } from '../../models/company.model';
-import { isValidCnpj } from '../../shared/format';
+import { isValidCnpj, formatCnpj } from '../../shared/format';
 
 @Component({
   selector: 'app-company-form',
@@ -79,6 +79,41 @@ export class CompanyFormComponent implements OnInit {
   /** No cadastro o certificado e a senha são obrigatórios; na edição, opcionais. */
   readonly certRequired = computed(() => !this.isEdit());
 
+  /** Estado do certificado atual na edição: válido, vencendo ou vencido. */
+  readonly certStatus = computed<'valid' | 'expiring' | 'expired' | 'none'>(() => {
+    const validade = this.currentCertDate();
+    if (!validade) return 'none';
+    const validDate = new Date(validade);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    if (validDate < now) return 'expired';
+    const diffDays = (validDate.getTime() - now.getTime()) / 86_400_000;
+    return diffDays <= 30 ? 'expiring' : 'valid';
+  });
+
+  readonly certStatusSeverity = computed(() =>
+    this.certStatus() === 'expired' ? 'error' : this.certStatus() === 'expiring' ? 'warn' : 'success'
+  );
+
+  readonly certStatusLabel = computed(() =>
+    this.certStatus() === 'expired'
+      ? 'Certificado vencido'
+      : this.certStatus() === 'expiring'
+        ? 'Certificado vencendo'
+        : 'Certificado vigente'
+  );
+
+  /** PFX e senha formam um par: se um for enviado, o outro é obrigatório. */
+  readonly certPairInvalid = computed(
+    () => Boolean(this.pfxBase64()) !== Boolean(this.password())
+  );
+
+  readonly certPairError = computed(() => {
+    if (!this.certPairInvalid()) return '';
+    if (this.pfxBase64() && !this.password()) return 'Informe a senha do arquivo PFX selecionado.';
+    return 'Selecione o arquivo PFX do certificado.';
+  });
+
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
@@ -95,7 +130,7 @@ export class CompanyFormComponent implements OnInit {
     this.api.getCompany(id).subscribe({
       next: (company: Company) => {
         this.nome.set(company.nome);
-        this.cnpj.set(company.cnpj);
+        this.cnpj.set(formatCnpj(company.cnpj));
         this.idDominio.set(company.id_dominio ?? null);
         this.currentCertDate.set(company.validade_cert ?? null);
         this.loading.set(false);
@@ -141,6 +176,7 @@ export class CompanyFormComponent implements OnInit {
     if (this.certRequired()) {
       if (!this.pfxBase64() || !this.password()) return false;
     }
+    if (this.certPairInvalid()) return false;
     return true;
   }
 
