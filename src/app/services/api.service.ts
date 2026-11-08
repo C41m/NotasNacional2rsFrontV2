@@ -161,8 +161,19 @@ export class ApiService {
 
   // ==================== NFSe Relatório XLSX ====================
 
-  downloadNfseRelatorioXlsx(periodo: string, companyIds?: number[]): Observable<Blob> {
-    let params = new HttpParams().set('periodo', periodo);
+  downloadNfseRelatorioXlsx(
+    periodo: string,
+    companyIds?: number[],
+    datainicio?: string | null,
+    datafim?: string | null
+  ): Observable<Blob> {
+    let params = new HttpParams();
+    if (datainicio || datafim) {
+      if (datainicio) params = params.set('datainicio', datainicio);
+      if (datafim) params = params.set('datafim', datafim);
+    } else if (periodo) {
+      params = params.set('periodo', periodo);
+    }
     if (companyIds && companyIds.length > 0) {
       params = params.set('company_ids', companyIds.join(','));
     }

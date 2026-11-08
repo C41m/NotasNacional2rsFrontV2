@@ -283,15 +283,22 @@ export class ProgressComponent implements OnInit, OnDestroy {
   }
 
   downloadRelatorioXlsx(): void {
+    const s = this.status();
+    const datainicio = s?.datainicio ?? undefined;
+    const datafim = s?.datafim ?? undefined;
     let periodo = this.periodo();
+    if (!periodo && (datainicio || datafim)) {
+      const raw = datainicio || datafim;
+      const m = (raw || '').match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+      if (m) periodo = `${m[3]}-${m[2]}`;
+    }
     if (!periodo) {
-      // Usa a competência atual (mês/ano atual) como fallback
-      const hoje = new Date();
-      periodo = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+      this.toast.error('Período não informado para gerar o relatório.', 'Erro');
+      return;
     }
     const companies = this.status()?.companies;
     const companyIds = companies ? Object.keys(companies).map(Number) : [];
-    this.api.downloadNfseRelatorioXlsx(periodo, companyIds).subscribe({
+    this.api.downloadNfseRelatorioXlsx(periodo, companyIds, datainicio, datafim).subscribe({
       next: blob => {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');

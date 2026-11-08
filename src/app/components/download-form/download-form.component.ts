@@ -101,10 +101,12 @@ export class DownloadFormComponent implements OnInit {
     }
 
     this.loading.set(true);
+    const datainicio = this.ddMmAaaa(this.dataInicial());
+    const periodo = datainicio ? `${datainicio.split('/')[2]}-${datainicio.split('/')[1]}` : undefined;
     this.api
       .startBatchDownload({
         company_ids: ids,
-        datainicio: this.ddMmAaaa(this.dataInicial()),
+        datainicio,
         datafim: this.ddMmAaaa(this.dataFinal()),
         download_type: this.downloadType(),
         force_update: this.forceUpdate()
@@ -112,7 +114,7 @@ export class DownloadFormComponent implements OnInit {
       .subscribe({
         next: response => {
           this.loading.set(false);
-          this.router.navigate(['/download', response.batch_id]);
+          this.router.navigate(['/download', response.batch_id], { queryParams: periodo ? { periodo } : {} });
         },
         error: () => this.loading.set(false)
       });

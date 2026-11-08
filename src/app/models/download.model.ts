@@ -41,6 +41,9 @@ export interface BatchStatus {
   total: number;
   done: number;
   status: string;
+  datainicio?: string | null;
+  datafim?: string | null;
+  download_type?: string | null;
   zip_path?: string;
   error?: string;
   companies?: { [companyId: string]: CompanyProgress };
