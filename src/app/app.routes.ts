@@ -31,6 +31,16 @@ export const routes: Routes = [
       )
   },
   {
+    path: 'notas/visao-geral',
+    loadComponent: () =>
+      import('./components/notas-dashboard/notas-dashboard.component').then(m => m.NotasDashboardComponent)
+  },
+  {
+    path: 'notas',
+    loadComponent: () =>
+      import('./components/notas-list/notas-list.component').then(m => m.NotasListComponent)
+  },
+  {
     path: 'download',
     loadComponent: () =>
       import('./components/download-form/download-form.component').then(m => m.DownloadFormComponent)

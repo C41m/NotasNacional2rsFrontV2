@@ -28,7 +28,7 @@
                 class="sidebar-link"
                 [routerLink]="item.path"
                 routerLinkActive="active"
-                [routerLinkActiveOptions]="{ exact: item.path === '/companies' }"
+                [routerLinkActiveOptions]="{ exact: item.path === '/companies' || item.path === '/notas' }"
                 ariaCurrentWhenActive="page"
                 [tabindex]="isGroupOpen(group.label) ? 0 : -1"
                 (click)="navigate.emit()"

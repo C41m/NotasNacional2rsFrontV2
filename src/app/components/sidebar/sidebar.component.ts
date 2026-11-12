@@ -46,6 +46,8 @@ export class SidebarComponent {
     {
       label: 'Notas',
       items: [
+        { label: 'Visão Geral', path: '/notas/visao-geral', icon: 'pi pi-chart-bar' },
+        { label: 'Notas Salvas', path: '/notas', icon: 'pi pi-file' },
         { label: 'Empresas', path: '/companies', icon: 'pi pi-building' },
         { label: 'Download NFSe', path: '/download', icon: 'pi pi-download' },
         { label: 'Downloads Ativos', path: '/batches', icon: 'pi pi-sync' }

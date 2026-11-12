@@ -55,7 +55,24 @@ export const appConfig: ApplicationConfig = {
         prevDecade: 'Década anterior',
         nextDecade: 'Próxima década',
         emptyMessage: 'Nenhum registro encontrado',
-        emptyFilterMessage: 'Nenhum resultado encontrado'
+        emptyFilterMessage: 'Nenhum resultado encontrado',
+        aria: {
+          trueLabel: 'Sim',
+          falseLabel: 'Não',
+          selectAll: 'Selecionar todas as opções',
+          unselectAll: 'Desmarcar todas as opções',
+          close: 'Fechar',
+          firstPageLabel: 'Primeira página',
+          lastPageLabel: 'Última página',
+          previousPageLabel: 'Página anterior',
+          prevPageLabel: 'Página anterior',
+          nextPageLabel: 'Próxima página',
+          pageLabel: 'Página {page}',
+          rowsPerPageLabel: 'Linhas por página',
+          jumpToPageInputLabel: 'Ir para página',
+          jumpToPageDropdownLabel: 'Ir para página',
+          selectRow: 'Selecionar linha'
+        }
       },
       theme: {
         preset: TwoRSPreset,

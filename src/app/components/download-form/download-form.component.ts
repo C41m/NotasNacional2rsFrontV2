@@ -75,6 +75,16 @@ export class DownloadFormComponent implements OnInit {
     return `01/${partes[1]}/${partes[0]}`;
   }
 
+  /** Último dia do mês: o portal nacional é semanal/dia, então competência
+   *  única (ex.: 10/2026) precisa virar 01/10/2026 → 31/10/2026. */
+  private mesParaUltimoDia(competencia: string): string | null {
+    if (!competencia) return null;
+    const [ano, mes] = competencia.split('-').map(Number);
+    if (!ano || !mes) return null;
+    const ultimo = new Date(ano, mes, 0).getDate();
+    return `${String(ultimo).padStart(2, '0')}/${String(mes).padStart(2, '0')}/${ano}`;
+  }
+
   private parseCompetencia(competencia: string): Date | null {
     if (!competencia) return null;
     const [ano, mes] = competencia.split('-').map(Number);
@@ -152,7 +162,7 @@ export class DownloadFormComponent implements OnInit {
     this.loading.set(true);
     const competenciaInicial = this.competenciaInicial();
     const datainicio = this.mesParaDdMmAaaa(competenciaInicial);
-    const datafim = this.mesParaDdMmAaaa(this.competenciaFinal());
+    const datafim = this.mesParaUltimoDia(this.competenciaFinal());
     this.api
       .startBatchDownload({
         company_ids: ids,

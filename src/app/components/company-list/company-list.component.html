@@ -10,28 +10,62 @@
   />
 </div>
 
-<!-- Estatísticas: faixa fina -->
-<div
-  class="stats-strip"
-  aria-label="Resumo de empresas"
-  [attr.aria-busy]="loading()"
->
-  <span class="stats-strip-item"><span class="stats-strip-value">@if (loading()) { <p-skeleton width="2rem" height="1rem" /> } @else { {{ totalCompanies() }} }</span> <span class="stats-strip-label">empresas</span></span>
+<!-- Resumo de certificados: faixa fina (padrão do app) — itens clicáveis filtram -->
+<div class="stats-strip" role="group" aria-label="Resumo de certificados — itens filtram a tabela" [attr.aria-busy]="loading()">
+  <button
+    type="button"
+    class="stats-strip-button"
+    [class.is-active]="certFilter() === 'valid'"
+    (click)="toggleCertFilter('valid')"
+    [attr.aria-pressed]="certFilter() === 'valid'"
+    pTooltip="Filtrar: certificados válidos (inclui os vencendo)"
+    tooltipPosition="bottom"
+  >
+    <span class="stats-strip-value text-success">
+      @if (loading()) { <p-skeleton width="2rem" height="1rem" /> } @else { {{ selectableTotal() }} }
+    </span>
+    <span class="stats-strip-label">{{ certCountLabel() }}</span>
+  </button>
   <span class="stats-strip-sep" aria-hidden="true">·</span>
-  <span class="stats-strip-item"><span class="stats-strip-value text-success">@if (loading()) { <p-skeleton width="2rem" height="1rem" /> } @else { {{ certCount() }} }</span> <span class="stats-strip-label">certificado válido</span></span>
+  <button
+    type="button"
+    class="stats-strip-button"
+    [class.is-active]="certFilter() === 'expiring'"
+    (click)="toggleCertFilter('expiring')"
+    [attr.aria-pressed]="certFilter() === 'expiring'"
+    pTooltip="Filtrar: vencendo em até 30 dias"
+    tooltipPosition="bottom"
+  >
+    <span class="stats-strip-value text-warn">
+      @if (loading()) { <p-skeleton width="2rem" height="1rem" /> } @else { {{ expiringSoonCount() }} }
+    </span>
+    <span class="stats-strip-label">vencendo (30d)</span>
+  </button>
   <span class="stats-strip-sep" aria-hidden="true">·</span>
-  <span class="stats-strip-item"><span class="stats-strip-value text-warn">@if (loading()) { <p-skeleton width="2rem" height="1rem" /> } @else { {{ expiringSoonCount() }} }</span> <span class="stats-strip-label">vencendo (30d)</span></span>
-  <span class="stats-strip-sep" aria-hidden="true">·</span>
-  <span class="stats-strip-item"><span class="stats-strip-value text-danger">@if (loading()) { <p-skeleton width="2rem" height="1rem" /> } @else { {{ noCertCount() }} }</span> <span class="stats-strip-label">vencido/ausente</span></span>
+  <button
+    type="button"
+    class="stats-strip-button"
+    [class.is-active]="certFilter() === 'expired'"
+    (click)="toggleCertFilter('expired')"
+    [attr.aria-pressed]="certFilter() === 'expired'"
+    pTooltip="Filtrar: vencido ou ausente"
+    tooltipPosition="bottom"
+  >
+    <span class="stats-strip-value text-danger">
+      @if (loading()) { <p-skeleton width="2rem" height="1rem" /> } @else { {{ noCertCount() }} }
+    </span>
+    <span class="stats-strip-label">vencido/ausente</span>
+  </button>
 </div>
 
 <!-- Tabela -->
-<div class="section">
+<div class="section secao-ledger">
   <div class="row-between" style="margin-bottom: 1.25rem">
     <p-iconfield class="toolbar-search">
       <p-inputicon styleClass="pi pi-search" />
       <input
         pInputText
+        id="company-search"
         type="text"
         placeholder="Buscar por nome ou CNPJ..."
         [ngModel]="search()"
@@ -39,6 +73,18 @@
         style="width: 100%"
         aria-label="Buscar por nome ou CNPJ"
       />
+      @if (search()) {
+        <button
+          type="button"
+          class="icon-btn-clear"
+          aria-label="Limpar busca"
+          pTooltip="Limpar busca"
+          tooltipPosition="top"
+          (click)="clearSearch()"
+        >
+          <i class="pi pi-times" aria-hidden="true"></i>
+        </button>
+      }
     </p-iconfield>
 
     <div class="inline-gap toolbar-actions">
@@ -74,12 +120,14 @@
       </div>
 
       <p-button
-        [label]="allSelectableSelected() ? 'Desmarcar' : 'Selecionar todas'"
+        [label]="selectAllLabel()"
         severity="secondary"
         [outlined]="true"
         size="small"
         [disabled]="selectableTotal() === 0"
-        (onClick)="toggleSelectAll(!allSelectableSelected())"
+        pTooltip="Seleciona todas as empresas com certificado válido"
+        tooltipPosition="top"
+        (onClick)="requestSelectAll(!allSelectableSelected())"
       />
     </div>
   </div>
@@ -88,7 +136,6 @@
     <p-table
       [value]="filteredCompanies()"
       dataKey="id"
-      [loading]="loading()"
       [rowHover]="true"
       [paginator]="true"
       [rows]="10"
@@ -96,16 +143,18 @@
       [showCurrentPageReport]="true"
       currentPageReportTemplate="Mostrando {first}–{last} de {totalRecords} registros"
       paginatorDropdownAppendTo="body"
+      [sortField]="'nome'"
+      [sortOrder]="1"
       [tableStyle]="{ 'min-width': '52rem' }"
     >
       <ng-template #header>
         <tr>
-          <th style="width: 3rem"></th>
-          <th style="width: 7rem; text-align: center">ID Domínio</th>
-          <th>Empresa</th>
-          <th style="width: 12rem; text-align: center">CNPJ</th>
-          <th style="width: 11rem; text-align: center">Certificado</th>
-          <th style="width: 7rem; text-align: right">Ações</th>
+          <th class="col-check"></th>
+          <th class="col-id col-center">ID Domínio</th>
+          <th pSortableColumn="nome" class="col-empresa col-left">Empresa <p-sorticon field="nome" /></th>
+          <th pSortableColumn="cnpj" class="col-cnpj col-center">CNPJ <p-sorticon field="cnpj" /></th>
+          <th pSortableColumn="validade_cert" class="col-cert col-center">Certificado <p-sorticon field="validade_cert" /></th>
+          <th class="col-acao col-center">Ações</th>
         </tr>
       </ng-template>
 
@@ -121,14 +170,15 @@
               [ngModel]="isSelected(company.id)"
               (ngModelChange)="toggleSelection(company, $event)"
               [disabled]="!isCertValid(company)"
+              [ariaLabel]="isCertValid(company) ? 'Selecionar ' + company.nome : 'Certificado vencido ou ausente — empresa não selecionável'"
               [pTooltip]="
-                isCertValid(company) ? 'Selecionar para download' : 'Certificado vencido ou ausente'
+                isCertValid(company) ? 'Selecionar para download' : 'Certificado vencido ou ausente — não selecionável'
               "
               tooltipPosition="top"
             />
           </td>
 
-          <td style="text-align: center">
+          <td class="col-id col-center">
             @if (company.id_dominio) {
               <span class="table-code">{{ company.id_dominio }}</span>
             } @else {
@@ -136,28 +186,24 @@
             }
           </td>
 
-          <td>
+          <td class="col-empresa col-left">
             <span class="table-name">{{ company.nome }}</span>
           </td>
 
-          <td style="text-align: center">
+          <td class="col-cnpj col-center">
             <span class="table-code">{{ formatCnpj(company.cnpj) }}</span>
           </td>
 
-          <td style="text-align: center">
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 0.25rem">
-              <p-tag
-                [value]="certLabel(company)"
-                [severity]="certSeverity(company)"
-                [rounded]="true"
-              />
+          <td class="col-cert col-center">
+            <div class="cert-cell">
+              <p-tag [value]="certLabel(company)" [pt]="{ root: statusTagClass(company) }" />
               @if (company.validade_cert) {
-                <span class="stat-card-hint mono">{{ formatDate(company.validade_cert) }}</span>
+                <span class="text-dim text-xs mono">{{ formatDate(company.validade_cert) }}</span>
               }
             </div>
           </td>
 
-          <td>
+          <td class="col-acao col-center">
             <div class="table-actions">
               <p-button
                 icon="pi pi-pencil"
@@ -165,18 +211,19 @@
                 [rounded]="true"
                 size="small"
                 severity="secondary"
-                pTooltip="Editar"
+                pTooltip="Editar cadastro"
                 tooltipPosition="top"
                 ariaLabel="Editar empresa"
                 (onClick)="editCompany(company.id)"
               />
+              <span class="acoes-sep" aria-hidden="true"></span>
               <p-button
                 icon="pi pi-trash"
                 [text]="true"
                 [rounded]="true"
                 size="small"
                 severity="danger"
-                pTooltip="Excluir"
+                pTooltip="Excluir definitivamente"
                 tooltipPosition="top"
                 ariaLabel="Excluir empresa"
                 (onClick)="confirmDelete(company)"
@@ -189,24 +236,32 @@
       <ng-template #emptymessage>
         <tr>
           <td colspan="6">
-            @if (!loading()) {
-              <div class="empty-state">
-                <i class="pi pi-building"></i>
-                @if (hasActiveFilter()) {
-                  <h3>Nenhuma empresa encontrada</h3>
-                  <p>Nenhuma empresa corresponde à busca ou ao filtro de certificado.</p>
-                  <p-button label="Limpar busca e filtro" icon="pi pi-times" (onClick)="clearFilters()" />
-                } @else {
-                  <h3>Nenhuma empresa cadastrada</h3>
-                  <p>Cadastre sua primeira empresa para começar a gerenciar suas NFSe.</p>
-                  <p-button label="Cadastrar Empresa" icon="pi pi-plus" (onClick)="createCompany()" />
-                }
-              </div>
-            } @else {
-              <div style="display: flex; flex-direction: column; gap: 0.75rem; padding: 0.5rem">
+            @if (loading()) {
+              <div class="empty-skeletons">
                 @for (row of [1, 2, 3, 4, 5]; track row) {
                   <p-skeleton width="100%" height="2.25rem" />
                 }
+              </div>
+            } @else if (loadError()) {
+              <div class="empty-state">
+                <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
+                <h3>Não foi possível carregar as empresas</h3>
+                <p>Verifique a conexão/back-end e tente novamente. A lista não está vazia — ela apenas não carregou.</p>
+                <p-button label="Tentar novamente" icon="pi pi-refresh" [outlined]="true" (onClick)="loadCompanies()" />
+              </div>
+            } @else if (hasActiveFilter()) {
+              <div class="empty-state">
+                <i class="pi pi-building" aria-hidden="true"></i>
+                <h3>Nenhuma empresa encontrada</h3>
+                <p>Nenhuma empresa corresponde à busca ou ao filtro de certificado.</p>
+                <p-button label="Limpar busca e filtro" icon="pi pi-times" (onClick)="clearFilters()" />
+              </div>
+            } @else {
+              <div class="empty-state">
+                <i class="pi pi-building" aria-hidden="true"></i>
+                <h3>Nenhuma empresa cadastrada</h3>
+                <p>Cadastre sua primeira empresa para começar a gerenciar suas NFSe.</p>
+                <p-button label="Cadastrar Empresa" icon="pi pi-plus" (onClick)="createCompany()" />
               </div>
             }
           </td>
@@ -218,7 +273,7 @@
   <!-- Barra fixa de seleção (só quando há seleção) -->
   @if (selectedCount() > 0) {
     <div class="selection-bar" role="region" aria-label="Seleção de empresas">
-      <span class="selection-bar-count"><strong>{{ selectionLabel() }}</strong></span>
+      <span class="selection-bar-count"><strong>{{ selectionLabel() }}</strong> <small class="selection-bar-dica">de {{ selectableTotal() }} válidas</small></span>
       <div class="selection-bar-actions">
         <p-button
           label="Limpar"

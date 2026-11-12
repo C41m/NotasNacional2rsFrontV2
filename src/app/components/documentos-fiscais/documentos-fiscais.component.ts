@@ -160,7 +160,7 @@ export class DocumentosFiscaisComponent implements OnInit {
   }
 
   loadEmpresas(): void {
-    this.api.listCompanies(1, 200, '').subscribe({
+    this.api.listCompanies(1, 1000, '').subscribe({
       next: list => this.empresas.set(list ?? []),
       error: () => this.empresas.set([])
     });
@@ -217,7 +217,12 @@ export class DocumentosFiscaisComponent implements OnInit {
 
   onPeriodoInput(raw: string): void {
     const digits = raw.replace(/\D/g, '').slice(0, 6);
-    this.periodo.set(digits.length === 6 ? `${digits.slice(0, 4)}-${digits.slice(4)}` : '');
+    const novo = digits.length === 6 ? `${digits.slice(0, 4)}-${digits.slice(4)}` : '';
+    if (novo !== this.periodo()) {
+      this.periodo.set(novo);
+      this.first.set(0);
+      this.load();
+    }
   }
 
   /** Alterna somenteAtivos e recarrega. */

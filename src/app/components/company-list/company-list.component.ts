@@ -1,6 +1,7 @@
 // src/app/components/company-list/company-list.component.ts
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { ConfirmationService } from 'primeng/api';
 import { TableModule } from 'primeng/table';
@@ -16,6 +17,8 @@ import { ApiService } from '../../services/api.service';
 import { ToastService } from '../../services/toast.service';
 import { Company } from '../../models/company.model';
 import { formatCnpj, formatDate } from '../../shared/format';
+
+const SELECT_ALL_CONFIRM_THRESHOLD = 20;
 
 @Component({
   selector: 'app-company-list',
@@ -42,6 +45,7 @@ export class CompanyListComponent implements OnInit {
 
   readonly companies = signal<Company[]>([]);
   readonly loading = signal(false);
+  readonly loadError = signal(false);
   readonly search = signal('');
   readonly certFilter = signal<'all' | 'valid' | 'expiring' | 'expired'>('all');
 
@@ -49,14 +53,16 @@ export class CompanyListComponent implements OnInit {
 
   // ── Estatísticas ────────────────────────────────────────────────
   readonly totalCompanies = computed(() => this.companies().length);
-  readonly certCount = computed(() => this.companies().filter(c => this.isCertValid(c)).length);
-  readonly noCertCount = computed(() => this.companies().filter(c => !this.isCertValid(c)).length);
+  readonly selectableTotal = computed(() => this.companies().filter(c => this.isCertValid(c)).length);
   readonly expiringSoonCount = computed(() => this.companies().filter(c => this.isCertExpiringSoon(c.validade_cert)).length);
+  readonly noCertCount = computed(() => this.companies().filter(c => !this.isCertValid(c)).length);
+
+  readonly certCountLabel = computed(() => this.selectableTotal() === 1 ? 'certificado válido' : 'certificados válidos');
 
   readonly filteredCompanies = computed(() => {
     const f = this.certFilter();
     if (f === 'all') return this.companies();
-    if (f === 'valid') return this.companies().filter(c => this.isCertValid(c) && !this.isCertExpiringSoon(c.validade_cert));
+    if (f === 'valid') return this.companies().filter(c => this.isCertValid(c));
     if (f === 'expiring') return this.companies().filter(c => this.isCertExpiringSoon(c.validade_cert));
     return this.companies().filter(c => this.isCertExpired(c.validade_cert));
   });
@@ -70,9 +76,9 @@ export class CompanyListComponent implements OnInit {
     this.selectedCount() === 1 ? '1 selecionada' : `${this.selectedCount()} selecionadas`
   );
 
-  /** Total de empresas elegíveis para download (certificado válido). */
-  readonly selectableTotal = computed(
-    () => this.companies().filter(c => this.isCertValid(c)).length
+  /** Rótulo do botão de seleção global: nunca seleciona sem informar o escopo. */
+  readonly selectAllLabel = computed(() =>
+    this.allSelectableSelected() ? 'Desmarcar todas' : `Selecionar as ${this.selectableTotal()} válidas`
   );
 
   /** Empresas selecionáveis: apenas as com certificado válido. */
@@ -86,9 +92,37 @@ export class CompanyListComponent implements OnInit {
     this.loadCompanies();
   }
 
+  @HostListener('document:keydown', ['$event'])
+  onDocumentKeydown(event: KeyboardEvent): void {
+    const target = event.target as HTMLElement | null;
+    const tag = target?.tagName?.toLowerCase();
+    const editavel = tag === 'input' || tag === 'textarea' || tag === 'select' || target?.isContentEditable;
+
+    if (event.key === '/' && !editavel) {
+      event.preventDefault();
+      const search = document.querySelector('#company-search') as HTMLInputElement | null;
+      search?.focus();
+      return;
+    }
+    if (event.key === 'Escape' && editavel) {
+      const raw = (target as HTMLInputElement).value;
+      if (raw) {
+        event.preventDefault();
+        this.search.set('');
+        this.loadCompanies();
+      }
+      return;
+    }
+    if ((event.ctrlKey || event.metaKey) && (event.key === 'a' || event.key === 'A') && !editavel) {
+      event.preventDefault();
+      this.requestSelectAll(true);
+    }
+  }
+
   loadCompanies(): void {
     this.loading.set(true);
-    this.api.listCompanies(1, 200, this.search()).subscribe({
+    this.loadError.set(false);
+    this.api.listCompanies(1, 1000, this.search()).subscribe({
       next: data => {
         this.companies.set(data);
         // Descarta seleções que não existem mais na resposta.
@@ -102,7 +136,9 @@ export class CompanyListComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
-        // O interceptor já exibe o toast; aqui só liberamos o loading.
+        // O interceptor já exibe o toast; aqui garantimos um estado de erro
+        // próprio na tela (não um "nenhuma empresa cadastrada" mentindo).
+        this.loadError.set(true);
         this.loading.set(false);
       }
     });
@@ -116,8 +152,17 @@ export class CompanyListComponent implements OnInit {
   }
 
   clearSearch(): void {
+    if (this.searchDebounce) {
+      clearTimeout(this.searchDebounce);
+      this.searchDebounce = null;
+    }
     this.search.set('');
     this.loadCompanies();
+  }
+
+  /** Filtro rápido pelo resumo: clicar de novo desfaz (volta para 'Todas'). */
+  toggleCertFilter(filter: 'valid' | 'expiring' | 'expired'): void {
+    this.certFilter.set(this.certFilter() === filter ? 'all' : filter);
   }
 
   clearFilters(): void {
@@ -152,10 +197,10 @@ export class CompanyListComponent implements OnInit {
     return diffDays >= 0 && diffDays <= 30;
   }
 
-  certSeverity(company: Company): 'success' | 'warn' | 'danger' {
-    if (this.isCertExpired(company.validade_cert)) return 'danger';
-    if (this.isCertExpiringSoon(company.validade_cert)) return 'warn';
-    return 'success';
+  statusTagClass(company: Company): string {
+    if (this.isCertExpired(company.validade_cert)) return 'status-tag status-critico';
+    if (this.isCertExpiringSoon(company.validade_cert)) return 'status-tag status-atencao';
+    return 'status-tag status-conforme';
   }
 
   certLabel(company: Company): string {
@@ -192,6 +237,30 @@ export class CompanyListComponent implements OnInit {
   allSelectableSelected(): boolean {
     const selectable = this.selectableIds();
     return selectable.length > 0 && selectable.every(id => this.selectedIds().has(id));
+  }
+
+  /**
+   * Pedido de seleção global. Acima do limite, exige confirmação explícita
+   * com a contagem no texto — a ação abrange empresas que não estão visíveis.
+   */
+  requestSelectAll(checked: boolean): void {
+    if (!checked) {
+      this.toggleSelectAll(false);
+      return;
+    }
+    const total = this.selectableTotal();
+    if (total > SELECT_ALL_CONFIRM_THRESHOLD) {
+      this.confirmationService.confirm({
+        header: 'Selecionar todas',
+        message: `Selecionar todas as ${total} empresas com certificado válido?`,
+        icon: 'pi pi-question-circle',
+        acceptLabel: `Selecionar as ${total}`,
+        rejectLabel: 'Cancelar',
+        accept: () => this.toggleSelectAll(true)
+      });
+      return;
+    }
+    this.toggleSelectAll(true);
   }
 
   toggleSelectAll(checked: boolean): void {

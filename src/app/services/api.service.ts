@@ -14,6 +14,14 @@ import {
   PaginatedResponse,
   TipoDocumento
 } from '../models/documento-fiscal.model';
+import {
+  NotaDetalhe,
+  NotaFiltros,
+  NotaResumo,
+  NotasDashboardResumo,
+  NotasEmpresaRanking,
+  NotasSerieItem
+} from '../models/nota.model';
 import { environment } from '../../environments/environment';
 
 /**
@@ -135,6 +143,55 @@ export class ApiService {
 
   listTiposDocumento(): Observable<TipoDocumento[]> {
     return this.http.get<TipoDocumento[]>(`${this.baseUrl}/documentos/tipos/`, {
+      headers: this.authHeaders()
+    });
+  }
+
+  // ==================== Notas Salvas / Dashboard NFSe ====================
+
+  getNotasResumo(filtros: NotaFiltros): Observable<NotasDashboardResumo> {
+    return this.http.get<NotasDashboardResumo>(`${this.baseUrl}/nfse/notas/dashboard/resumo`, {
+      params: this.params({ ...filtros }),
+      headers: this.authHeaders()
+    });
+  }
+
+  getNotasSeries(filtros: NotaFiltros): Observable<NotasSerieItem[]> {
+    return this.http.get<NotasSerieItem[]>(`${this.baseUrl}/nfse/notas/dashboard/series`, {
+      params: this.params({ ...filtros }),
+      headers: this.authHeaders()
+    });
+  }
+
+  getNotasEmpresas(filtros: NotaFiltros, limit = 10): Observable<NotasEmpresaRanking[]> {
+    return this.http.get<NotasEmpresaRanking[]>(`${this.baseUrl}/nfse/notas/dashboard/empresas`, {
+      params: this.params({ ...filtros, limit }),
+      headers: this.authHeaders()
+    });
+  }
+
+  listNotas(
+    filtros: NotaFiltros,
+    page = 1,
+    pageSize = 20,
+    sort = 'competencia',
+    order = 'desc'
+  ): Observable<PaginatedResponse<NotaResumo>> {
+    return this.http.get<PaginatedResponse<NotaResumo>>(`${this.baseUrl}/nfse/notas`, {
+      params: this.params({ ...filtros, page, page_size: pageSize, sort, order }),
+      headers: this.authHeaders()
+    });
+  }
+
+  getNota(id: string | number): Observable<NotaDetalhe> {
+    return this.http.get<NotaDetalhe>(`${this.baseUrl}/nfse/notas/${id}`, {
+      headers: this.authHeaders()
+    });
+  }
+
+  downloadNotaXml(id: string | number): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/nfse/notas/${id}/xml`, {
+      responseType: 'blob',
       headers: this.authHeaders()
     });
   }

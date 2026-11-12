@@ -1,0 +1,307 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Visão Geral das Notas</h1>
+    <p class="page-subtitle">Resumo das NFS-e salvas no banco por competência, empresa e papel</p>
+  </div>
+  <div class="inline-gap">
+    <p-button
+      label="Exportar XLSX"
+      icon="pi pi-file-excel"
+      severity="success"
+      [outlined]="true"
+      size="small"
+      pTooltip="Relatório por competência com resumo e detalhamento (exige início e fim)"
+      tooltipPosition="top"
+      (onClick)="exportar()"
+    />
+    <p-button
+      label="Atualizar"
+      [icon]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-refresh'"
+      severity="secondary"
+      [outlined]="true"
+      size="small"
+      [disabled]="loading()"
+      (onClick)="load()"
+    />
+  </div>
+</div>
+
+<div class="section">
+  <div class="dash-filtros">
+    <div class="field">
+      <label class="field-label" for="dash-empresa">Empresa</label>
+      <p-select
+        inputId="dash-empresa"
+        [options]="empresasOptions()"
+        [ngModel]="empresaId()"
+        (ngModelChange)="onEmpresaChange($event)"
+        optionLabel="nome"
+        optionValue="id"
+        [showClear]="true"
+        [filter]="true"
+        filterBy="nome"
+        [virtualScroll]="true"
+        [virtualScrollItemSize]="46"
+        placeholder="Todas as empresas"
+        styleClass="w-full select-empresa-filter"
+        filterPlaceholder="Buscar empresa..."
+      />
+    </div>
+    <div class="field">
+      <label class="field-label" for="dash-competencia-inicial">Competência inicial</label>
+      <p-datepicker
+        inputId="dash-competencia-inicial"
+        [ngModel]="competenciaInicial()"
+        (ngModelChange)="onCompetenciaInicialChange($event)"
+        (keydown.enter)="onFiltroEnter()"
+        view="month"
+        selectionMode="single"
+        dateFormat="mm/yy"
+        [showIcon]="true"
+        iconDisplay="input"
+        [appendTo]="'body'"
+        placeholder="mm/aaaa"
+        inputStyleClass="w-full"
+        ariaLabel="Competência inicial"
+      />
+    </div>
+    <div class="field">
+      <label class="field-label" for="dash-competencia-final">Competência final</label>
+      <p-datepicker
+        inputId="dash-competencia-final"
+        [ngModel]="competenciaFinal()"
+        (ngModelChange)="onCompetenciaFinalChange($event)"
+        (keydown.enter)="onFiltroEnter()"
+        view="month"
+        selectionMode="single"
+        dateFormat="mm/yy"
+        [showIcon]="true"
+        iconDisplay="input"
+        [appendTo]="'body'"
+        placeholder="mm/aaaa"
+        inputStyleClass="w-full"
+        ariaLabel="Competência final"
+      />
+    </div>
+    <div class="field">
+      <label class="field-label" for="dash-role">Papel</label>
+      <p-select
+        inputId="dash-role"
+        [options]="roleOptions"
+        [ngModel]="role()"
+        (ngModelChange)="onRoleChange($event)"
+        optionLabel="label"
+        optionValue="value"
+        [showClear]="true"
+        placeholder="Todos"
+        styleClass="w-full"
+      />
+    </div>
+    <div class="field field-end">
+      <div class="inline-gap">
+        <p-button label="Limpar" [text]="true" severity="secondary" size="small" (onClick)="clearFilters()" />
+      </div>
+    </div>
+  </div>
+
+  @if (periodoInvalido) {
+    <div class="periodo-erro">
+      <p-message severity="error" variant="outlined" size="small">
+        Competência final deve ser maior ou igual à competência inicial. Ajuste o período para ver os dados.
+      </p-message>
+    </div>
+  }
+
+  <p class="filtros-dica">A lista atualiza sozinha ao mudar os filtros · Enter aplica na hora · tecla <kbd>/</kbd> foca a empresa</p>
+</div>
+
+@if (error() && !loading()) {
+  <div class="callout callout-danger callout-center" role="alert">
+    <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
+    <div>
+      <strong>Erro ao carregar o dashboard</strong>
+      <span>{{ error() }}</span>
+    </div>
+    <p-button label="Tentar novamente" icon="pi pi-refresh" size="small" [outlined]="true" class="push-right" (onClick)="load()" />
+  </div>
+}
+
+@if (loading()) {
+  <div class="section" aria-busy="true">
+    <div class="stack-sm">
+      <p-skeleton width="100%" height="2.5rem" />
+      <p-skeleton width="100%" height="8rem" />
+      <p-skeleton width="100%" height="8rem" />
+    </div>
+  </div>
+} @else if (resumo(); as r) {
+
+  <div class="stats-strip" aria-label="Resumo das notas" aria-busy="false">
+    <button type="button" class="stats-strip-item stats-strip-button" (click)="openNotas()">
+      <span class="stats-strip-value">{{ r.total_notas | number:'1.0-0' }}</span> <span class="stats-strip-label">notas</span>
+    </button>
+    <span class="stats-strip-sep" aria-hidden="true">·</span>
+    <span class="stats-strip-item"><span class="stats-strip-value">R$ {{ r.total_valor_servico | number:'1.2-2' }}</span> <span class="stats-strip-label">serviços</span></span>
+    <span class="stats-strip-sep" aria-hidden="true">·</span>
+    <span class="stats-strip-item"><span class="stats-strip-value">R$ {{ r.total_iss | number:'1.2-2' }}</span> <span class="stats-strip-label">ISS</span></span>
+    <span class="stats-strip-sep" aria-hidden="true">·</span>
+    <button type="button" class="stats-strip-item stats-strip-button" (click)="openNotas(undefined, 'prestado')">
+      <span class="stats-strip-value text-success">{{ r.notas_prestadas | number:'1.0-0' }}</span> <span class="stats-strip-label">prestadas</span>
+    </button>
+    <span class="stats-strip-sep" aria-hidden="true">·</span>
+    <button type="button" class="stats-strip-item stats-strip-button" (click)="openNotas(undefined, 'tomado')">
+      <span class="stats-strip-value text-info">{{ r.notas_tomadas | number:'1.0-0' }}</span> <span class="stats-strip-label">tomadas</span>
+    </button>
+    <span class="stats-strip-sep" aria-hidden="true">·</span>
+    <span class="stats-strip-item"><span class="stats-strip-value">{{ r.empresas_com_notas }}</span> <span class="stats-strip-label">{{ empresasComNotasLabel() }}</span></span>
+  </div>
+
+  <div class="sync-strip" role="status" aria-live="polite">
+    <i class="pi pi-cloud sync-strip-icon" aria-hidden="true"></i>
+    @if (r.ultima_sincronizacao) {
+      <span class="sync-strip-text">Base sincronizada com o ADN · <strong>última atualização {{ r.ultima_sincronizacao | date:'dd/MM/yyyy HH:mm' }}</strong></span>
+      <span class="sync-sep" aria-hidden="true">·</span>
+      <span class="sync-strip-text"><strong>{{ r.notas_novas_desde_ontem ?? 0 }}</strong> {{ (r.notas_novas_desde_ontem ?? 0) === 1 ? 'nota nova' : 'notas novas' }} desde ontem</span>
+    } @else {
+      <span class="sync-strip-text">Base ainda não sincronizada com o ADN</span>
+    }
+    <span class="sync-sep" aria-hidden="true">·</span>
+    @if (r.saude_conferencia === 'ok') {
+      <span class="sync-strip-text saude-ok"><i class="pi pi-check-circle" aria-hidden="true"></i> <strong>conferência automática: base íntegra</strong></span>
+    } @else {
+      <span class="sync-strip-text saude-atencao"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i> <strong>{{ r.notas_sem_competencia + r.notas_sem_xml }} pendência(s) de dados</strong> (verifique as tags abaixo)</span>
+    }
+  </div>
+
+  <div class="dashboard-grid">
+    <div class="section">
+      <div class="section-title">
+        <span>Notas por competência</span>
+        <a class="section-title-link" routerLink="/notas">ver todas as competências</a>
+      </div>
+      @if (seriesError()) {
+        <div class="section-erro" role="alert">
+          <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+          <div>
+            <strong>Não foi possível carregar a série por competência</strong>
+            <span>Os totais acima continuam valendo.</span>
+          </div>
+          <p-button label="Tentar novamente" icon="pi pi-refresh" size="small" [outlined]="true" (onClick)="load()" />
+        </div>
+      } @else if (series().length === 0) {
+        <p class="text-muted text-sm">Sem notas para o período selecionado. Reveja os filtros ou rode uma sincronização.</p>
+      } @else {
+        <div class="table-wrap series-table">
+          <table class="audit-table">
+            <thead>
+              <tr>
+                <th scope="col">Competência</th>
+                <th scope="col" class="th-center">Prestadas</th>
+                <th scope="col" class="th-center">Tomadas</th>
+                <th scope="col" class="th-right">Quantidade</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of seriesRecentes(); track item.competencia) {
+                <tr class="series-row">
+                  <td class="mono series-cell">
+                    <a
+                      class="stretched-row-link"
+                      [routerLink]="['/notas']"
+                      [queryParams]="{ competencia_inicio: item.competencia, competencia_fim: item.competencia }"
+                      [attr.aria-label]="'Ver notas de ' + formatMesAno(item.competencia || '')"
+                    >{{ formatMesAno(item.competencia || '') }}</a>
+                  </td>
+                  <td class="td-center mono">{{ item.notas_prestadas | number:'1.0-0' }}</td>
+                  <td class="td-center mono text-info">{{ item.notas_tomadas | number:'1.0-0' }}</td>
+                  <td class="td-right mono"><b>{{ item.total_notas | number:'1.0-0' }}</b></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <p class="series-footnote text-muted text-sm">Mostrando as 12 competências mais recentes.</p>
+      }
+    </div>
+
+    <div class="section">
+      <div class="section-title">
+        <span>Top empresas</span>
+        <a class="section-title-link" routerLink="/notas">ver todas as empresas</a>
+      </div>
+      @if (empresasError()) {
+        <div class="section-erro" role="alert">
+          <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+          <div>
+            <strong>Não foi possível carregar o ranking de empresas</strong>
+            <span>Os totais acima continuam valendo.</span>
+          </div>
+          <p-button label="Tentar novamente" icon="pi pi-refresh" size="small" [outlined]="true" (onClick)="load()" />
+        </div>
+      } @else if (empresas().length === 0) {
+        <p class="text-muted text-sm">Sem empresas com notas no período. Reveja os filtros.</p>
+      } @else {
+        <div class="table-wrap top-empresas-table">
+          <table class="audit-table">
+            <colgroup>
+              <col />
+              <col class="col-notas" />
+              <col class="col-servicos" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th scope="col">Empresa</th>
+                <th scope="col" class="th-center">Notas</th>
+                <th scope="col" class="th-right">Serviços</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (emp of empresas(); track emp.empresa_id) {
+                <tr>
+                  <td>
+                    <a class="table-code-link" [routerLink]="['/notas']" [queryParams]="{ empresa_id: emp.empresa_id }" [attr.aria-label]="'Ver notas de ' + emp.nome">
+                      {{ emp.nome }}
+                    </a>
+                    <div class="text-dim text-sm mono">{{ formatCnpj(emp.cnpj || '') }}</div>
+                  </td>
+                  <td class="td-center mono">{{ emp.total_notas | number:'1.0-0' }}</td>
+                  <td class="td-right mono money">R$ {{ emp.valor_servico | number:'1.2-2' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title"><span>Conferência de dados</span></div>
+    <div class="inline-gap tags-wrap">
+      <p-tag
+        [value]="r.notas_sem_competencia + ' sem competência'"
+        [severity]="r.notas_sem_competencia > 0 ? 'warn' : 'secondary'"
+        pTooltip="Notas sem competência gravada no banco — não aparecem em relatórios por competência"
+        tooltipPosition="top"
+      />
+      <p-tag
+        [value]="r.notas_sem_xml + ' sem XML'"
+        [severity]="r.notas_sem_xml > 0 ? 'warn' : 'secondary'"
+        pTooltip="Notas sem o XML original anexado — não é possível conferir o leiaute na conferência"
+        tooltipPosition="top"
+      />
+      <p-tag
+        [value]="r.notas_canceladas + ' com evento de cancelamento'"
+        [severity]="r.notas_canceladas > 0 ? 'warn' : 'secondary'"
+        pTooltip="Notas que têm um evento de cancelamento registrado — confira no relatório da competência"
+        tooltipPosition="top"
+      />
+      <p-tag
+        [value]="r.notas_outras + ' outras (sem papel definido)'"
+        severity="secondary"
+        pTooltip="Notas sem papel prestado/tomado identificado — verifique a extração ADN"
+        tooltipPosition="top"
+      />
+    </div>
+  </div>
+}

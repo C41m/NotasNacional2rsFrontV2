@@ -33,6 +33,8 @@ export class App implements OnInit {
   private readonly routeLabels: Record<string, string> = {
     '/companies': 'Empresas',
     '/companies/new': 'Empresas / Nova Empresa',
+    '/notas/visao-geral': 'Notas / Visão Geral',
+    '/notas': 'Notas / Notas Salvas',
     '/auditoria': 'Auditoria',
     '/documentos-fiscais': 'Documentos Fiscais',
     '/download': 'Empresas / Download NFSe',
